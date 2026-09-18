@@ -60,7 +60,7 @@ export function DashboardPage() {
         <StatCard
           label="Empréstimos ativos"
           value={String(summary?.emprestimos_ativos ?? 0)}
-          icon="tabler:hand-coins"
+          icon="tabler:coins"
           loading={loadingSummary}
           tone="neutral"
         />

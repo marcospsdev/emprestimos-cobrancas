@@ -18,7 +18,7 @@ export function BrandMark({ size = 'md', className, textClassName }: BrandMarkPr
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <Icon icon="tabler:hand-coins" className={cn(icon, 'shrink-0 text-brand-400')} />
+      <Icon icon="tabler:coins" className={cn(icon, 'shrink-0 text-brand-400')} />
       <span className={cn(text, 'font-semibold tracking-tight text-text-primary whitespace-nowrap', textClassName)}>
         MeusEmpréstimos
       </span>

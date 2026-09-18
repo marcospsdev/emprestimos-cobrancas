@@ -60,7 +60,7 @@ export function LoanDetailPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Valor emprestado" value={formatCurrency(loan.principal_amount)} icon="tabler:hand-coins" tone="brand" />
+        <StatCard label="Valor emprestado" value={formatCurrency(loan.principal_amount)} icon="tabler:coins" tone="brand" />
         <StatCard label="Valor total" value={formatCurrency(loan.total_amount)} icon="tabler:receipt-2" tone="gold" />
         <StatCard label="Saldo em aberto" value={formatCurrency(outstanding)} icon="tabler:clock-dollar" tone={outstanding > 0 ? 'danger' : 'success'} />
         <StatCard

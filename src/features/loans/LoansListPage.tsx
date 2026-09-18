@@ -67,7 +67,7 @@ export function LoansListPage() {
         </div>
       ) : !loans || loans.length === 0 ? (
         <EmptyState
-          icon="tabler:hand-coins"
+          icon="tabler:coins"
           title="Nenhum empréstimo encontrado"
           description="Cadastre um novo empréstimo para começar."
           action={

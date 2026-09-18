@@ -79,7 +79,7 @@ export function PersonDetailPage() {
             <p className="text-sm text-text-muted">Carregando...</p>
           ) : !loans || loans.length === 0 ? (
             <EmptyState
-              icon="tabler:hand-coins"
+              icon="tabler:coins"
               title="Nenhum empréstimo"
               description="Esta pessoa ainda não possui empréstimos registrados."
               action={

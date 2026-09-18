@@ -97,12 +97,12 @@ function LoansReportPanel() {
         />
       </div>
 
-      <StatCard label="Total emprestado no período" value={formatCurrency(total)} icon="tabler:hand-coins" loading={isLoading} tone="brand" />
+      <StatCard label="Total emprestado no período" value={formatCurrency(total)} icon="tabler:coins" loading={isLoading} tone="brand" />
 
       {isLoading ? (
         <Skeleton className="h-48 w-full" />
       ) : !rows || rows.length === 0 ? (
-        <EmptyState icon="tabler:hand-coins" title="Nenhum empréstimo no período" />
+        <EmptyState icon="tabler:coins" title="Nenhum empréstimo no período" />
       ) : (
         <TableContainer>
           <Table>
