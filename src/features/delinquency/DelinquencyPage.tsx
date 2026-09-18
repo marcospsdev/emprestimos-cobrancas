@@ -8,20 +8,11 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { getWhatsAppLink, onlyDigits } from '@/lib/whatsapp'
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
 import type { InstallmentView } from '@/types/database'
 import { useInstallmentsQuery } from '@/features/installments/api/useInstallments'
 import { PaymentFormModal } from '@/features/installments/PaymentFormModal'
-
-function onlyDigits(value: string | null) {
-  return (value ?? '').replace(/\D/g, '')
-}
-
-function whatsappLink(phone: string | null) {
-  const digits = onlyDigits(phone)
-  if (!digits) return null
-  const withCountry = digits.startsWith('55') ? digits : `55${digits}`
-  return `https://wa.me/${withCountry}`
-}
 
 export function DelinquencyPage() {
   const [payingInstallment, setPayingInstallment] = useState<InstallmentView | null>(null)
@@ -65,7 +56,6 @@ export function DelinquencyPage() {
               </TableHeader>
               <TableBody>
                 {sorted.map((installment) => {
-                  const wa = whatsappLink(installment.person_phone)
                   return (
                     <TableRow key={installment.id}>
                       <TableCell className="font-medium">{installment.person_name}</TableCell>
@@ -74,17 +64,7 @@ export function DelinquencyPage() {
                       <TableCell className="text-right font-medium">{formatCurrency(installment.updated_amount)}</TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1.5">
-                          {wa && (
-                            <a
-                              href={wa}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Chamar no WhatsApp"
-                              className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-success-muted hover:text-success"
-                            >
-                              <Icon icon="tabler:brand-whatsapp" className="size-4.5" />
-                            </a>
-                          )}
+                          <WhatsAppButton phone={installment.person_phone} />
                           {installment.person_phone && (
                             <a
                               href={`tel:${onlyDigits(installment.person_phone)}`}
@@ -108,7 +88,7 @@ export function DelinquencyPage() {
 
           <div className="flex flex-col gap-2 sm:hidden">
             {sorted.map((installment) => {
-              const wa = whatsappLink(installment.person_phone)
+              const wa = getWhatsAppLink(installment.person_phone)
               return (
                 <Card key={installment.id} className="border-danger/30 p-4">
                   <div className="flex items-start justify-between gap-2">

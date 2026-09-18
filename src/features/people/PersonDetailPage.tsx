@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { getWhatsAppLink } from '@/lib/whatsapp'
 import { usePersonQuery } from './api/usePeople'
 import { useLoansQuery } from '@/features/loans/api/useLoans'
 import { usePaymentsByPersonQuery } from '@/features/installments/api/useInstallments'
@@ -30,6 +31,8 @@ export function PersonDetailPage() {
     return <PageLoader />
   }
 
+  const wa = getWhatsAppLink(person.phone)
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -37,6 +40,14 @@ export function PersonDetailPage() {
         description={[person.cpf, person.phone].filter(Boolean).join(' · ') || 'Sem contato cadastrado'}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {wa && (
+              <Button asChild variant="secondary">
+                <a href={wa} target="_blank" rel="noopener noreferrer">
+                  <Icon icon="tabler:brand-whatsapp" className="size-4.5" />
+                  WhatsApp
+                </a>
+              </Button>
+            )}
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Icon icon="tabler:edit" className="size-4.5" />
               Editar

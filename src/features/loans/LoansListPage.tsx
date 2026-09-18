@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { cn } from '@/lib/cn'
 import { formatCurrency, formatDate, formatPercent } from '@/lib/format'
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
 import type { LoanStatus } from '@/types/database'
 import { useLoansQuery } from './api/useLoans'
 import { LoanStatusBadge } from './LoanStatusBadge'
@@ -89,6 +90,7 @@ export function LoansListPage() {
                   <TableHead>1º vencimento</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Contato</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -103,6 +105,11 @@ export function LoansListPage() {
                       <LoanStatusBadge status={loan.status} />
                     </TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(loan.total_amount)}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        <WhatsAppButton phone={loan.person?.phone} />
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -126,7 +133,10 @@ export function LoansListPage() {
                   </div>
                   <LoanStatusBadge status={loan.status} />
                 </div>
-                <p className="mt-2 text-lg font-semibold text-text-primary">{formatCurrency(loan.total_amount)}</p>
+                <div className="mt-2 flex items-end justify-between gap-2">
+                  <p className="text-lg font-semibold text-text-primary">{formatCurrency(loan.total_amount)}</p>
+                  <WhatsAppButton phone={loan.person?.phone} />
+                </div>
               </Card>
             ))}
           </div>

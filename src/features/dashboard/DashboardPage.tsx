@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { InterestByMonthChart } from '@/components/charts/InterestByMonthChart'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
 import { useDashboardSummaryQuery, useInterestByMonthQuery, useUpcomingInstallmentsQuery } from './api/useDashboard'
 
 export function DashboardPage() {
@@ -134,9 +135,10 @@ export function DashboardPage() {
                         Parcela {installment.sequence} · {formatDate(installment.due_date)}
                       </p>
                     </div>
-                    <p className="shrink-0 text-sm font-semibold text-text-primary">
-                      {formatCurrency(installment.updated_amount)}
-                    </p>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <p className="text-sm font-semibold text-text-primary">{formatCurrency(installment.updated_amount)}</p>
+                      <WhatsAppButton phone={installment.person_phone} />
+                    </div>
                   </li>
                 ))}
               </ul>

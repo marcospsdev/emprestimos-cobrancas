@@ -11,6 +11,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu'
 import { TextField } from '@/components/ui/form/TextField'
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
 import type { Person } from '@/types/database'
 import { useDeletePerson, usePeopleQuery } from './api/usePeople'
 import { PersonFormModal } from './PersonFormModal'
@@ -111,7 +112,8 @@ export function PeopleListPage() {
                     <TableCell className="text-text-secondary">{person.cpf || '—'}</TableCell>
                     <TableCell className="text-text-secondary">{person.phone || '—'}</TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end gap-1">
+                        <WhatsAppButton phone={person.phone} />
                         <RowActions person={person} onEdit={openEdit} onDelete={handleDelete} />
                       </div>
                     </TableCell>
@@ -134,7 +136,10 @@ export function PeopleListPage() {
                     <p className="truncate font-medium text-text-primary">{person.name}</p>
                     <p className="mt-0.5 text-sm text-text-secondary">{person.phone || person.cpf || 'Sem contato'}</p>
                   </div>
-                  <RowActions person={person} onEdit={openEdit} onDelete={handleDelete} />
+                  <div className="flex shrink-0 items-center gap-1">
+                    <WhatsAppButton phone={person.phone} />
+                    <RowActions person={person} onEdit={openEdit} onDelete={handleDelete} />
+                  </div>
                 </div>
               </Card>
             ))}

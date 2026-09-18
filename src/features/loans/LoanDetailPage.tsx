@@ -9,6 +9,7 @@ import { PageLoader } from '@/components/ui/PageLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { formatCurrency, formatDate, formatPercent } from '@/lib/format'
+import { getWhatsAppLink } from '@/lib/whatsapp'
 import { useLoanQuery } from './api/useLoans'
 import { useInstallmentsQuery, usePaymentsByLoanQuery } from '@/features/installments/api/useInstallments'
 import { InstallmentStatusBadge } from '@/features/installments/InstallmentStatusBadge'
@@ -37,6 +38,8 @@ export function LoanDetailPage() {
     return <PageLoader />
   }
 
+  const wa = getWhatsAppLink(loan.person?.phone)
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -45,6 +48,14 @@ export function LoanDetailPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <LoanStatusBadge status={loan.status} />
+            {wa && (
+              <Button asChild variant="secondary">
+                <a href={wa} target="_blank" rel="noopener noreferrer">
+                  <Icon icon="tabler:brand-whatsapp" className="size-4.5" />
+                  WhatsApp
+                </a>
+              </Button>
+            )}
             {loan.status === 'ativo' && outstanding > 0 && (
               <Button variant="secondary" onClick={() => setRenegotiateOpen(true)}>
                 <Icon icon="tabler:refresh" className="size-4.5" />

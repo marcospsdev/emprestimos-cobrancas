@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
 import { cn } from '@/lib/cn'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
 import type { InstallmentStatus, InstallmentView } from '@/types/database'
 import { useInstallmentsQuery } from './api/useInstallments'
 import { InstallmentStatusBadge } from './InstallmentStatusBadge'
@@ -86,7 +87,8 @@ export function InstallmentsPage() {
                       <InstallmentStatusBadge status={installment.status} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <WhatsAppButton phone={installment.person_phone} />
                         {installment.status !== 'pago' && (
                           <Button size="sm" variant="secondary" onClick={() => setPayingInstallment(installment)}>
                             Registrar pagamento
@@ -114,12 +116,15 @@ export function InstallmentsPage() {
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <p className="text-lg font-semibold text-text-primary">{formatCurrency(installment.updated_amount)}</p>
-                  {installment.status !== 'pago' && (
-                    <Button size="sm" onClick={() => setPayingInstallment(installment)}>
-                      <Icon icon="tabler:cash" className="size-4" />
-                      Pagar
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <WhatsAppButton phone={installment.person_phone} />
+                    {installment.status !== 'pago' && (
+                      <Button size="sm" onClick={() => setPayingInstallment(installment)}>
+                        <Icon icon="tabler:cash" className="size-4" />
+                        Pagar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </Card>
             ))}
