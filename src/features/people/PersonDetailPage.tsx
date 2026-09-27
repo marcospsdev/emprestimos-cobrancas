@@ -1,165 +1,125 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useMemo, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router'
 import { Icon } from '@iconify/react'
-import { PageHeader } from '@/components/ui/PageHeader'
-import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { PageLoader } from '@/components/ui/PageLoader'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { formatCurrency, formatDate } from '@/lib/format'
-import { getWhatsAppLink } from '@/lib/whatsapp'
-import { usePersonQuery } from './api/usePeople'
+import { PageLoader } from '@/components/ui/PageLoader'
+import { StatCard } from '@/components/ui/StatCard'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
+import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
+import { formatCurrency, todayISO } from '@/lib/format'
 import { useLoansQuery } from '@/features/loans/api/useLoans'
-import { usePaymentsByPersonQuery } from '@/features/installments/api/useInstallments'
-import { LoanStatusBadge } from '@/features/loans/LoanStatusBadge'
-import { LoanFormModal } from '@/features/loans/LoanFormModal'
+import { LoanList } from '@/features/loans/LoanList'
+import { useLoanForm } from '@/features/loans/loanFormContext'
+import { sortLoans, summarizeLoans } from '@/features/loans/status'
+import { useDeletePerson, usePersonQuery } from './api/usePeople'
 import { PersonFormModal } from './PersonFormModal'
 
 export function PersonDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [loanModalOpen, setLoanModalOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const { openNewLoan } = useLoanForm()
+  const confirm = useConfirm()
+  const { showToast } = useToast()
+  const deleteMutation = useDeletePerson()
 
-  const { data: person, isLoading } = usePersonQuery(id)
-  const { data: loans, isLoading: loadingLoans } = useLoansQuery({ personId: id })
-  const { data: payments, isLoading: loadingPayments } = usePaymentsByPersonQuery(id)
+  const { data: person, isLoading, error } = usePersonQuery(id)
+  const { data: loans, isLoading: loadingLoans } = useLoansQuery({ personId: id }, { enabled: !!id })
 
-  if (isLoading || !person) {
-    return <PageLoader />
+  const today = todayISO()
+  const totals = useMemo(() => summarizeLoans(loans ?? [], today), [loans, today])
+  const sorted = useMemo(() => sortLoans(loans ?? [], today), [loans, today])
+
+  if (error) {
+    return <EmptyState icon="tabler:user-off" title="Pessoa não encontrada" action={<Link to="/pessoas" className="text-sm text-brand-400">Voltar</Link>} />
+  }
+  if (isLoading || !person) return <PageLoader />
+
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: 'Excluir pessoa',
+      description: `Excluir "${person.name}"? Só é possível se não houver empréstimos dela.`,
+      confirmLabel: 'Excluir',
+      variant: 'danger',
+    })
+    if (!ok) return
+    try {
+      await deleteMutation.mutateAsync(person.id)
+      showToast('Pessoa excluída.', 'success')
+      navigate('/pessoas')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erro ao excluir pessoa.', 'error')
+    }
   }
 
-  const wa = getWhatsAppLink(person.phone)
-
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title={person.name}
-        description={[person.cpf, person.phone].filter(Boolean).join(' · ') || 'Sem contato cadastrado'}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {wa && (
-              <Button asChild variant="secondary">
-                <a href={wa} target="_blank" rel="noopener noreferrer">
-                  <Icon icon="tabler:brand-whatsapp" className="size-4.5" />
-                  WhatsApp
-                </a>
-              </Button>
-            )}
-            <Button variant="secondary" onClick={() => setEditOpen(true)}>
-              <Icon icon="tabler:edit" className="size-4.5" />
-              Editar
-            </Button>
-            <Button onClick={() => setLoanModalOpen(true)}>
-              <Icon icon="tabler:plus" className="size-4.5" />
-              Novo empréstimo
-            </Button>
-          </div>
-        }
-      />
+    <div className="flex flex-col gap-5">
+      <Link to="/pessoas" className="-mb-2 flex h-10 items-center gap-1 self-start text-sm font-medium text-text-secondary hover:text-text-primary">
+        <Icon icon="tabler:arrow-left" className="size-4.5" />
+        Pessoas
+      </Link>
 
-      {(person.address || person.notes) && (
-        <Card>
-          <CardContent className="pt-5 text-sm">
-            {person.address && (
-              <p className="text-text-secondary">
-                <span className="text-text-muted">Endereço: </span>
-                {person.address}
-              </p>
-            )}
-            {person.notes && (
-              <p className="mt-1 text-text-secondary">
-                <span className="text-text-muted">Observações: </span>
-                {person.notes}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      <div className="flex items-start gap-3">
+        <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-xl font-semibold text-brand-300">
+          {person.name.trim().charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-semibold text-text-primary sm:text-2xl">{person.name}</h1>
+          <p className="text-sm text-text-secondary">{person.phone || 'Sem telefone'}</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => setEditOpen(true)} aria-label="Editar pessoa">
+          <Icon icon="tabler:pencil" className="size-5" />
+        </Button>
+      </div>
+
+      {person.notes && <p className="rounded-2xl border border-border bg-surface p-4 text-sm whitespace-pre-line text-text-secondary">{person.notes}</p>}
+
+      <div className="grid grid-cols-2 gap-2">
+        <WhatsAppButton phone={person.phone} label="WhatsApp" className="h-12 w-full justify-center rounded-xl" />
+        <Button onClick={() => openNewLoan({ personId: person.id })} className={person.phone ? '' : 'col-span-2'}>
+          <Icon icon="tabler:plus" className="size-4.5" />
+          Emprestar
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard
+          label="Deve"
+          value={formatCurrency(totals.pending + totals.overdue)}
+          icon="tabler:clock-dollar"
+          tone={totals.overdue > 0 ? 'danger' : 'brand'}
+          hint={totals.overdue > 0 ? `${formatCurrency(totals.overdue)} atrasado` : undefined}
+          loading={loadingLoans}
+        />
+        <StatCard
+          label="Já pagou"
+          value={formatCurrency(totals.received)}
+          icon="tabler:circle-check"
+          tone="success"
+          hint={`${totals.paidCount} empréstimo(s)`}
+          loading={loadingLoans}
+        />
+      </div>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-base font-semibold text-text-primary">Empréstimos</h2>
+        <LoanList
+          loans={sorted}
+          loading={loadingLoans}
+          showPerson={false}
+          empty={<EmptyState icon="tabler:coins" title="Nenhum empréstimo para essa pessoa" />}
+        />
+      </section>
+
+      {sorted.length === 0 && !loadingLoans && (
+        <Button variant="ghost" onClick={handleDelete} className="self-center text-danger hover:bg-danger-muted hover:text-danger">
+          <Icon icon="tabler:trash" className="size-4.5" />
+          Excluir pessoa
+        </Button>
       )}
 
-      <Tabs defaultValue="emprestimos">
-        <TabsList>
-          <TabsTrigger value="emprestimos">Empréstimos</TabsTrigger>
-          <TabsTrigger value="pagamentos">Histórico de pagamentos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="emprestimos" className="mt-4">
-          {loadingLoans ? (
-            <p className="text-sm text-text-muted">Carregando...</p>
-          ) : !loans || loans.length === 0 ? (
-            <EmptyState
-              icon="tabler:coins"
-              title="Nenhum empréstimo"
-              description="Esta pessoa ainda não possui empréstimos registrados."
-              action={
-                <Button variant="secondary" size="sm" onClick={() => setLoanModalOpen(true)}>
-                  Novo empréstimo
-                </Button>
-              }
-            />
-          ) : (
-            <TableContainer>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Valor emprestado</TableHead>
-                    <TableHead>Parcelas</TableHead>
-                    <TableHead>1º vencimento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loans.map((loan) => (
-                    <TableRow key={loan.id} clickable onClick={() => navigate(`/emprestimos/${loan.id}`)}>
-                      <TableCell>{formatCurrency(loan.principal_amount)}</TableCell>
-                      <TableCell className="text-text-secondary">{loan.installments_count}x</TableCell>
-                      <TableCell className="text-text-secondary">{formatDate(loan.first_due_date)}</TableCell>
-                      <TableCell>
-                        <LoanStatusBadge status={loan.status} />
-                      </TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(loan.total_amount)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </TabsContent>
-
-        <TabsContent value="pagamentos" className="mt-4">
-          {loadingPayments ? (
-            <p className="text-sm text-text-muted">Carregando...</p>
-          ) : !payments || payments.length === 0 ? (
-            <EmptyState icon="tabler:receipt" title="Nenhum pagamento registrado" />
-          ) : (
-            <TableContainer>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Observação</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="text-text-secondary">{formatDate(payment.payment_date)}</TableCell>
-                      <TableCell>{payment.notes || '—'}</TableCell>
-                      <TableCell className="text-right font-medium text-success">{formatCurrency(payment.amount)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      <LoanFormModal open={loanModalOpen} onOpenChange={setLoanModalOpen} defaultPersonId={person.id} />
       <PersonFormModal open={editOpen} onOpenChange={setEditOpen} person={person} />
     </div>
   )

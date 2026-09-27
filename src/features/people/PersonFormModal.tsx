@@ -1,19 +1,12 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/Dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { TextField } from '@/components/ui/form/TextField'
 import { TextareaField } from '@/components/ui/form/TextareaField'
 import { useToast } from '@/components/ui/Toast'
+import { maskPhone } from '@/lib/whatsapp'
 import type { Person } from '@/types/database'
 import { emptyPersonValues, personSchema, type PersonFormValues } from './schema'
 import { useCreatePerson, useUpdatePerson } from './api/usePeople'
@@ -31,6 +24,7 @@ export function PersonFormModal({ open, onOpenChange, person }: PersonFormModalP
   const isEdit = !!person
 
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -42,26 +36,21 @@ export function PersonFormModal({ open, onOpenChange, person }: PersonFormModalP
 
   useEffect(() => {
     if (!open) return
-    reset(
-      person
-        ? {
-            name: person.name,
-            cpf: person.cpf ?? '',
-            phone: person.phone ?? '',
-            address: person.address ?? '',
-            notes: person.notes ?? '',
-          }
-        : emptyPersonValues,
-    )
+    reset(person ? { name: person.name, phone: maskPhone(person.phone ?? ''), notes: person.notes ?? '' } : emptyPersonValues)
   }, [open, person, reset])
 
   const onSubmit = async (values: PersonFormValues) => {
+    const payload = {
+      name: values.name.trim(),
+      phone: values.phone?.trim() || null,
+      notes: values.notes?.trim() || null,
+    }
     try {
       if (isEdit) {
-        await updateMutation.mutateAsync({ id: person.id, payload: values })
+        await updateMutation.mutateAsync({ id: person.id, payload })
         showToast('Pessoa atualizada.', 'success')
       } else {
-        await createMutation.mutateAsync(values)
+        await createMutation.mutateAsync(payload)
         showToast('Pessoa cadastrada.', 'success')
       }
       onOpenChange(false)
@@ -72,21 +61,40 @@ export function PersonFormModal({ open, onOpenChange, person }: PersonFormModalP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="md">
-        <form onSubmit={handleSubmit(onSubmit)} className="flex h-full min-h-0 flex-col">
+      <DialogContent size="sm">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col" noValidate>
           <DialogHeader>
             <DialogTitle>{isEdit ? 'Editar pessoa' : 'Nova pessoa'}</DialogTitle>
-            <DialogDescription>Dados do cliente/tomador do empréstimo.</DialogDescription>
           </DialogHeader>
           <DialogBody>
             <div className="flex flex-col gap-4">
-              <TextField label="Nome" required error={errors.name?.message} {...register('name')} />
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <TextField label="CPF" placeholder="000.000.000-00" {...register('cpf')} />
-                <TextField label="Telefone/WhatsApp" placeholder="(00) 00000-0000" {...register('phone')} />
-              </div>
-              <TextField label="Endereço" {...register('address')} />
-              <TextareaField label="Observações" {...register('notes')} />
+              <TextField
+                label="Nome"
+                required
+                autoComplete="off"
+                autoCapitalize="words"
+                enterKeyHint="next"
+                error={errors.name?.message}
+                {...register('name')}
+              />
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field }) => (
+                  <TextField
+                    label="WhatsApp"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    enterKeyHint="next"
+                    placeholder="(00) 00000-0000"
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(maskPhone(e.target.value))}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
+              <TextareaField label="Observações (opcional)" autoCapitalize="sentences" {...register('notes')} />
             </div>
           </DialogBody>
           <DialogFooter>

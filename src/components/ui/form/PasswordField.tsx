@@ -24,14 +24,14 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
             ref={ref}
             id={fieldId}
             type={visible ? 'text' : 'password'}
-            className={cn(inputBaseClass, 'pr-10', error && inputErrorClass, className)}
+            className={cn(inputBaseClass, 'pr-12 sm:pr-10', error && inputErrorClass, className)}
             aria-invalid={!!error}
             {...props}
           />
           <button
             type="button"
             onClick={() => setVisible((v) => !v)}
-            className="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:text-text-primary"
+            className="absolute right-0.5 top-1/2 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg sm:right-1 sm:size-8 sm:rounded-md text-text-muted transition-colors hover:text-text-primary"
             tabIndex={-1}
           >
             <Icon icon={visible ? 'tabler:eye-off' : 'tabler:eye'} className="size-4.5" />

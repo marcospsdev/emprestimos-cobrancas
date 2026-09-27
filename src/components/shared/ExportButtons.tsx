@@ -2,8 +2,6 @@ import { Icon } from '@iconify/react'
 import { Button } from '@/components/ui/Button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu'
 import { useToast } from '@/components/ui/Toast'
-import { exportTableToPdf } from '@/lib/pdf/tableExport'
-import { exportTableToExcel } from '@/lib/excel/workbookExport'
 import type { ReportColumn } from '@/lib/reportColumn'
 
 interface ExportButtonsProps<T> {
@@ -18,12 +16,19 @@ interface ExportButtonsProps<T> {
 export function ExportButtons<T>({ title, sheetName, filenameBase, columns, rows, disabled }: ExportButtonsProps<T>) {
   const { showToast } = useToast()
 
-  const handlePdf = () => {
-    exportTableToPdf(title, columns, rows, `${filenameBase}.pdf`)
+  // jsPDF e ExcelJS são pesados (~1 MB): só são baixados quando alguém exporta.
+  const handlePdf = async () => {
+    try {
+      const { exportTableToPdf } = await import('@/lib/pdf/tableExport')
+      exportTableToPdf(title, columns, rows, `${filenameBase}.pdf`)
+    } catch {
+      showToast('Erro ao gerar PDF.', 'error')
+    }
   }
 
   const handleExcel = async () => {
     try {
+      const { exportTableToExcel } = await import('@/lib/excel/workbookExport')
       await exportTableToExcel(sheetName, columns, rows, `${filenameBase}.xlsx`)
     } catch {
       showToast('Erro ao gerar arquivo Excel.', 'error')

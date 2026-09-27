@@ -226,7 +226,9 @@ export function Lightfall({
     if (!container) return
 
     const renderer = new Renderer({
-      dpr: dpr ?? (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1),
+      // Celulares têm devicePixelRatio 3: renderizar 9x os pixels num efeito de fundo
+      // esquenta o aparelho e gasta bateria sem diferença visível. Limita a 1.5.
+      dpr: dpr ?? (typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 1.5) : 1),
       alpha: true,
       antialias: true,
     })

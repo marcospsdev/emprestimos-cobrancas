@@ -24,8 +24,9 @@ const sizeClasses: Record<NonNullable<DialogContentProps['size']>, string> = {
 
 const DRAG_DISMISS_THRESHOLD = 110
 
-export function DialogContent({ className, size = 'md', children, ...props }: DialogContentProps) {
+export function DialogContent({ className, size = 'md', children, onOpenAutoFocus, ...props }: DialogContentProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const dragInfo = useRef({ startY: 0, active: false })
   const [dragY, setDragY] = useState(0)
 
@@ -57,6 +58,16 @@ export function DialogContent({ className, size = 'md', children, ...props }: Di
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=open]:animate-fade-in" />
       <DialogPrimitive.Content
+        ref={contentRef}
+        // Por padrão o Radix foca o primeiro campo do formulário ao abrir — no
+        // celular isso abre o teclado sem a pessoa ter tocado em nada. Focamos
+        // o próprio modal (acessível para leitor de tela, sem abrir teclado).
+        onOpenAutoFocus={(e) => {
+          onOpenAutoFocus?.(e)
+          if (e.defaultPrevented) return
+          e.preventDefault()
+          contentRef.current?.focus({ preventScroll: true })
+        }}
         style={dragY ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined}
         className={cn(
           // Mobile: bottom sheet que sobe da parte inferior da tela. dvh (em vez de vh)
@@ -94,7 +105,7 @@ export function DialogContent({ className, size = 'md', children, ...props }: Di
 }
 
 export function DialogHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('shrink-0 border-b border-border px-6 py-4', className)} {...props} />
+  return <div className={cn('shrink-0 border-b border-border px-5 py-4 pr-14 sm:px-6 sm:pr-12', className)} {...props} />
 }
 
 export function DialogTitle({ className, ...props }: ComponentPropsWithoutRef<typeof DialogPrimitive.Title>) {
@@ -109,13 +120,13 @@ export function DialogDescription({
 }
 
 export function DialogBody({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('grow overflow-y-auto px-6 py-4', className)} {...props} />
+  return <div className={cn('grow overflow-y-auto px-5 py-4 sm:px-6', className)} {...props} />
 }
 
 export function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('flex shrink-0 items-center justify-end gap-2 border-t border-border px-6 py-4', className)}
+      className={cn('flex shrink-0 items-center gap-2 border-t border-border px-5 py-4 *:flex-1 sm:justify-end sm:px-6 sm:*:flex-none', className)}
       {...props}
     />
   )

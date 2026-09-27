@@ -43,6 +43,8 @@ export function MoneyField({
         decimalScale={2}
         fixedDecimalScale
         prefix="R$ "
+        inputMode="decimal"
+        enterKeyHint="next"
         allowNegative={false}
         placeholder={placeholder}
         disabled={disabled}

@@ -1,149 +1,227 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { Icon } from '@iconify/react'
 import { Button } from '@/components/ui/Button'
-import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Skeleton } from '@/components/ui/Skeleton'
-import { Card } from '@/components/ui/Card'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
+import { MonthNavigator, formatMonthLabel, getMonthRange } from '@/components/ui/MonthNavigator'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { ExportButtons } from '@/components/shared/ExportButtons'
+import { useMonthParam } from '@/hooks/useMonthParam'
 import { cn } from '@/lib/cn'
-import { formatCurrency, formatDate, formatPercent } from '@/lib/format'
-import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
-import type { LoanStatus } from '@/types/database'
+import { formatCurrency, formatDate, normalizeSearch, todayISO } from '@/lib/format'
+import type { ReportColumn } from '@/lib/reportColumn'
+import type { Loan, LoanStatus } from '@/types/database'
 import { useLoansQuery } from './api/useLoans'
-import { LoanStatusBadge } from './LoanStatusBadge'
-import { LoanFormModal } from './LoanFormModal'
+import { LoanList } from './LoanList'
+import { useLoanForm } from './loanFormContext'
+import { STATUS_LABEL, getLoanStatus, sortLoans, summarizeLoans } from './status'
 
-const FILTERS: Array<{ label: string; value: LoanStatus | 'todos' }> = [
-  { label: 'Todos', value: 'todos' },
-  { label: 'Ativos', value: 'ativo' },
-  { label: 'Quitados', value: 'quitado' },
-  { label: 'Renegociados', value: 'renegociado' },
+type Filter = 'todos' | LoanStatus
+
+const FILTERS: Filter[] = ['todos', 'pendente', 'atrasado', 'pago']
+
+const EXPORT_COLUMNS: ReportColumn<Loan>[] = [
+  { header: 'Pagar até', accessor: (l) => formatDate(l.due_date) },
+  { header: 'Título', accessor: (l) => l.title },
+  { header: 'Pessoa', accessor: (l) => l.person?.name ?? '—' },
+  { header: 'Emprestado', accessor: (l) => formatCurrency(l.amount_lent), align: 'right' },
+  { header: 'A receber', accessor: (l) => formatCurrency(l.amount_to_receive), align: 'right' },
+  { header: 'Status', accessor: (l) => STATUS_LABEL[getLoanStatus(l)] },
+  { header: 'Pago em', accessor: (l) => formatDate(l.paid_at) },
+  { header: 'Forma', accessor: (l) => l.payment_method ?? '' },
 ]
 
-export function LoansListPage() {
-  const navigate = useNavigate()
-  const [filter, setFilter] = useState<LoanStatus | 'todos'>('todos')
-  const [modalOpen, setModalOpen] = useState(false)
 
-  const { data: loans, isLoading } = useLoansQuery(filter === 'todos' ? {} : { status: filter })
+export function LoansListPage() {
+  const [month, setMonth] = useMonthParam()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState('')
+  const { openNewLoan } = useLoanForm()
+
+  const filter = (searchParams.get('status') as Filter | null) ?? 'todos'
+  // ?ver=atrasados → todos os atrasados, de qualquer mês.
+  const allOverdueMode = searchParams.get('ver') === 'atrasados'
+
+  const setParam = (key: string, value: string | null) =>
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev)
+        if (value) params.set(key, value)
+        else params.delete(key)
+        return params
+      },
+      { replace: true },
+    )
+
+  const range = getMonthRange(month)
+  const monthQuery = useLoansQuery(range, { enabled: !allOverdueMode })
+  const overdueQuery = useLoansQuery({ overdueOnly: true })
+
+  const today = todayISO()
+  const baseLoans = allOverdueMode ? overdueQuery.data : monthQuery.data
+  const totals = useMemo(() => summarizeLoans(baseLoans ?? [], today), [baseLoans, today])
+
+  const olderOverdue = useMemo(
+    () => (overdueQuery.data ?? []).filter((l) => l.due_date < range.from),
+    [overdueQuery.data, range.from],
+  )
+
+  const visible = useMemo(() => {
+    let list = baseLoans ?? []
+    if (!allOverdueMode && filter !== 'todos') list = list.filter((l) => getLoanStatus(l, today) === filter)
+    const q = normalizeSearch(search.trim())
+    if (q) list = list.filter((l) => normalizeSearch(`${l.title} ${l.person?.name ?? ''} ${l.description ?? ''}`).includes(q))
+    return sortLoans(list, today)
+  }, [baseLoans, allOverdueMode, filter, search, today])
+
+  const counts: Record<Filter, number> = {
+    todos: totals.count,
+    pendente: totals.pendingCount,
+    atrasado: totals.overdueCount,
+    pago: totals.paidCount,
+  }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
-        title="Empréstimos"
-        description="Todos os empréstimos concedidos"
+        title={allOverdueMode ? 'Todos os atrasados' : 'Empréstimos'}
         actions={
-          <Button onClick={() => setModalOpen(true)}>
-            <Icon icon="tabler:plus" className="size-4.5" />
-            Novo empréstimo
-          </Button>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <ExportButtons
+              title={allOverdueMode ? 'Empréstimos atrasados' : `Empréstimos — ${formatMonthLabel(month)}`}
+              sheetName="Empréstimos"
+              filenameBase={allOverdueMode ? 'emprestimos-atrasados' : `emprestimos-${range.from.slice(0, 7)}`}
+              columns={EXPORT_COLUMNS}
+              rows={visible}
+            />
+            {/* No celular: "Novo empréstimo" primeiro e ocupando o espaço; no desktop, depois do Exportar. */}
+            <Button onClick={() => openNewLoan()} className="order-first flex-1 sm:order-none sm:flex-none">
+              <Icon icon="tabler:plus" className="size-5 sm:size-4.5" />
+              Novo empréstimo
+            </Button>
+          </div>
         }
       />
 
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            className={cn(
-              'cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',
-              filter === f.value
-                ? 'border-brand-600/40 bg-brand-500/10 text-brand-300'
-                : 'border-border-strong bg-surface text-text-secondary hover:bg-surface-hover',
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div className="flex flex-col gap-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      ) : !loans || loans.length === 0 ? (
-        <EmptyState
-          icon="tabler:coins"
-          title="Nenhum empréstimo encontrado"
-          description="Cadastre um novo empréstimo para começar."
-          action={
-            <Button variant="secondary" size="sm" onClick={() => setModalOpen(true)}>
-              Novo empréstimo
-            </Button>
-          }
-        />
+      {allOverdueMode ? (
+        <button
+          type="button"
+          onClick={() => setParam('ver', null)}
+          className="flex h-11 cursor-pointer items-center gap-2 self-start rounded-xl px-2 text-sm font-medium text-brand-400 hover:bg-brand-500/10"
+        >
+          <Icon icon="tabler:arrow-left" className="size-4.5" />
+          Voltar para a lista do mês
+        </button>
       ) : (
-        <>
-          <TableContainer className="hidden sm:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Pessoa</TableHead>
-                  <TableHead>Valor emprestado</TableHead>
-                  <TableHead>Juros</TableHead>
-                  <TableHead>Parcelas</TableHead>
-                  <TableHead>1º vencimento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Contato</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loans.map((loan) => (
-                  <TableRow key={loan.id} clickable onClick={() => navigate(`/emprestimos/${loan.id}`)}>
-                    <TableCell className="font-medium">{loan.person?.name ?? '—'}</TableCell>
-                    <TableCell className="text-text-secondary">{formatCurrency(loan.principal_amount)}</TableCell>
-                    <TableCell className="text-text-secondary">{formatPercent(loan.interest_rate)}</TableCell>
-                    <TableCell className="text-text-secondary">{loan.installments_count}x</TableCell>
-                    <TableCell className="text-text-secondary">{formatDate(loan.first_due_date)}</TableCell>
-                    <TableCell>
-                      <LoanStatusBadge status={loan.status} />
-                    </TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(loan.total_amount)}</TableCell>
-                    <TableCell>
-                      <div className="flex justify-end">
-                        <WhatsAppButton phone={loan.person?.phone} />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <div className="flex flex-col gap-2 sm:hidden">
-            {loans.map((loan) => (
-              <Card
-                key={loan.id}
-                className="cursor-pointer p-4 active:bg-surface-hover"
-                onClick={() => navigate(`/emprestimos/${loan.id}`)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-text-primary">{loan.person?.name ?? '—'}</p>
-                    <p className="mt-0.5 text-xs text-text-muted">
-                      {loan.installments_count}x · {formatPercent(loan.interest_rate)} · vence{' '}
-                      {formatDate(loan.first_due_date)}
-                    </p>
-                  </div>
-                  <LoanStatusBadge status={loan.status} />
-                </div>
-                <div className="mt-2 flex items-end justify-between gap-2">
-                  <p className="text-lg font-semibold text-text-primary">{formatCurrency(loan.total_amount)}</p>
-                  <WhatsAppButton phone={loan.person?.phone} />
-                </div>
-              </Card>
-            ))}
-          </div>
-        </>
+        <MonthNavigator month={month} onChange={setMonth} />
       )}
 
-      <LoanFormModal open={modalOpen} onOpenChange={setModalOpen} />
+      {!allOverdueMode && olderOverdue.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setParam('ver', 'atrasados')}
+          className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-danger/30 bg-danger-muted px-4 py-3 text-left text-sm text-danger transition-colors hover:bg-danger/15"
+        >
+          <span className="flex items-center gap-2 font-medium">
+            <Icon icon="tabler:alert-triangle" className="size-5 shrink-0" />
+            {olderOverdue.length === 1
+              ? '1 empréstimo atrasado de meses anteriores'
+              : `${olderOverdue.length} empréstimos atrasados de meses anteriores`}
+          </span>
+          <span className="flex shrink-0 items-center gap-1 font-semibold">
+            Ver
+            <Icon icon="tabler:chevron-right" className="size-4.5" />
+          </span>
+        </button>
+      )}
+
+      {/* Resumo do que está na tela */}
+      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-surface p-3 text-center">
+        <Summary label="A receber" value={totals.pending} />
+        <Summary label="Atrasado" value={totals.overdue} danger />
+        <Summary label="Recebido" value={totals.received} success />
+      </div>
+
+      {!allOverdueMode && (
+        <div
+          className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+        >
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={filter === f}
+              onClick={() => setParam('status', f === 'todos' ? null : f)}
+              className={cn(
+                'flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors',
+                filter === f
+                  ? 'border-brand-500 bg-brand-500/15 text-brand-300'
+                  : 'border-border-strong bg-surface text-text-secondary hover:bg-surface-hover',
+              )}
+            >
+              {f === 'todos' ? 'Todos' : STATUS_LABEL[f]}
+              <span className="text-xs opacity-70">{counts[f]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="relative">
+        <Icon icon="tabler:search" className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-text-muted" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por título ou pessoa"
+          enterKeyHint="search"
+          className="h-12 w-full rounded-xl border border-border bg-surface pr-3 pl-10 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-brand-500 sm:h-10 sm:max-w-sm sm:text-sm"
+        />
+      </div>
+
+      <LoanList
+        loans={visible}
+        loading={allOverdueMode ? overdueQuery.isLoading : monthQuery.isLoading}
+        empty={
+          <EmptyState
+            icon="tabler:coins"
+            title={
+              search
+                ? 'Nada encontrado'
+                : allOverdueMode
+                  ? 'Nenhum empréstimo atrasado'
+                  : filter === 'todos'
+                    ? 'Nenhum empréstimo para receber neste mês'
+                    : `Nenhum empréstimo "${STATUS_LABEL[filter as LoanStatus]}" neste mês`
+            }
+            action={
+              !search && !allOverdueMode ? (
+                <Button variant="secondary" onClick={() => openNewLoan()}>
+                  <Icon icon="tabler:plus" className="size-4.5" />
+                  Novo empréstimo
+                </Button>
+              ) : undefined
+            }
+          />
+        }
+      />
+    </div>
+  )
+}
+
+function Summary({ label, value, danger, success }: { label: string; value: number; danger?: boolean; success?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-text-muted">{label}</p>
+      <p
+        className={cn(
+          'mt-0.5 text-[13px] leading-tight font-semibold break-words min-[380px]:text-sm sm:text-base',
+          danger && value > 0 ? 'text-danger' : success ? 'text-success' : 'text-text-primary',
+        )}
+      >
+        {formatCurrency(value)}
+      </p>
     </div>
   )
 }

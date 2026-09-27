@@ -65,12 +65,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               </div>
             </DialogHeader>
             <DialogFooter className="border-t-0">
-              <Button variant="secondary" size="sm" onClick={() => close(false)}>
+              <Button variant="secondary" onClick={() => close(false)}>
                 {state.cancelLabel ?? 'Cancelar'}
               </Button>
               <Button
                 variant={state.variant === 'danger' ? 'danger' : 'primary'}
-                size="sm"
                 onClick={() => close(true)}
               >
                 {state.confirmLabel ?? 'Confirmar'}

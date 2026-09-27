@@ -6,7 +6,7 @@ import { Icon } from '@iconify/react'
 import { cn } from '@/lib/cn'
 
 export const buttonVariants = cva(
-  'inline-flex cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+  'inline-flex cursor-pointer select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl font-medium sm:rounded-lg transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -21,10 +21,11 @@ export const buttonVariants = cva(
         link: 'text-brand-400 underline-offset-4 hover:underline p-0 h-auto',
       },
       size: {
-        sm: 'h-8 px-3 text-sm',
-        md: 'h-10 px-4 text-sm',
-        lg: 'h-12 px-6 text-base',
-        icon: 'h-10 w-10',
+        // Mobile-first: md tem 48px no celular (alvo de toque) e 40px a partir de sm:.
+        sm: 'h-9 px-3 text-sm',
+        md: 'h-12 px-5 text-base sm:h-10 sm:px-4 sm:text-sm',
+        lg: 'h-14 px-6 text-base',
+        icon: 'size-11 sm:size-10',
       },
     },
     defaultVariants: {

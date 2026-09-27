@@ -2,10 +2,13 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import type { TooltipContentProps } from 'recharts'
 import { formatCurrency } from '@/lib/format'
 
-export interface InterestByMonthPoint {
+export interface MonthlyPoint {
   label: string
-  juros: number
+  previsto: number
+  recebido: number
 }
+
+const compact = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })
 
 function ChartTooltip({ active, payload, label }: TooltipContentProps) {
   if (!active || !payload?.length) return null
@@ -13,7 +16,7 @@ function ChartTooltip({ active, payload, label }: TooltipContentProps) {
     <div className="rounded-lg border border-border-strong bg-surface-elevated px-3 py-2 text-xs shadow-card">
       <p className="mb-1 font-medium text-text-primary">{label}</p>
       {payload.map((item) => (
-        <p key={item.dataKey as string} className="flex items-center gap-2" style={{ color: item.color }}>
+        <p key={item.dataKey as string} style={{ color: item.color }}>
           {item.name}: {formatCurrency(item.value as number)}
         </p>
       ))}
@@ -21,11 +24,12 @@ function ChartTooltip({ active, payload, label }: TooltipContentProps) {
   )
 }
 
-export function InterestByMonthChart({ data }: { data: InterestByMonthPoint[] }) {
+/** Barras por mês: quanto era para receber x quanto foi recebido. */
+export function MonthlyChart({ data }: { data: MonthlyPoint[] }) {
   return (
-    <div className="h-72 w-full">
+    <div className="h-56 w-full sm:h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+        <BarChart data={data} margin={{ top: 8, right: 4, left: 0, bottom: 0 }} barGap={2}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
           <XAxis
             dataKey="label"
@@ -34,14 +38,15 @@ export function InterestByMonthChart({ data }: { data: InterestByMonthPoint[] })
             tickLine={false}
           />
           <YAxis
-            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
+            tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(value: number) => formatCurrency(value)}
-            width={90}
+            tickFormatter={(value: number) => compact.format(value)}
+            width={40}
           />
           <Tooltip content={(props) => <ChartTooltip {...props} />} cursor={{ fill: 'var(--color-surface-hover)' }} />
-          <Bar dataKey="juros" name="Juros recebidos" fill="var(--color-gold-500)" radius={[4, 4, 0, 0]} maxBarSize={32} />
+          <Bar dataKey="previsto" name="Para receber" fill="var(--color-border-strong)" radius={[4, 4, 0, 0]} maxBarSize={22} />
+          <Bar dataKey="recebido" name="Recebido" fill="var(--color-brand-500)" radius={[4, 4, 0, 0]} maxBarSize={22} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -1,54 +1,79 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { Icon } from '@iconify/react'
 import { Button } from '@/components/ui/Button'
-import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { Card } from '@/components/ui/Card'
-import { useToast } from '@/components/ui/Toast'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from '@/components/ui/Table'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu'
-import { TextField } from '@/components/ui/form/TextField'
+import { useToast } from '@/components/ui/Toast'
+import { RowAction } from '@/components/shared/RowAction'
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
+import { formatCurrency, normalizeSearch, todayISO } from '@/lib/format'
+import { useLoansQuery } from '@/features/loans/api/useLoans'
+import { summarizeLoans, type LoanTotals } from '@/features/loans/status'
 import type { Person } from '@/types/database'
 import { useDeletePerson, usePeopleQuery } from './api/usePeople'
 import { PersonFormModal } from './PersonFormModal'
 
 export function PeopleListPage() {
-  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Person | null>(null)
-
-  const { data: people, isLoading } = usePeopleQuery(search)
-  const deleteMutation = useDeletePerson()
-  const { showToast } = useToast()
+  const { data: people, isLoading } = usePeopleQuery()
+  const { data: loans } = useLoansQuery()
+  const deletePerson = useDeletePerson()
   const confirm = useConfirm()
+  const { showToast } = useToast()
+
+  // Uso pessoal: poucos registros, então somar no aparelho é simples e rápido.
+  const totalsByPerson = useMemo(() => {
+    const today = todayISO()
+    const groups = new Map<string, NonNullable<typeof loans>>()
+    for (const loan of loans ?? []) {
+      const list = groups.get(loan.person_id) ?? []
+      list.push(loan)
+      groups.set(loan.person_id, list)
+    }
+    const result = new Map<string, LoanTotals>()
+    for (const [id, list] of groups) result.set(id, summarizeLoans(list, today))
+    return result
+  }, [loans])
+
+  const visible = useMemo(() => {
+    const q = normalizeSearch(search.trim())
+    if (!q) return people ?? []
+    return (people ?? []).filter((p) => normalizeSearch(`${p.name} ${p.phone ?? ''}`).includes(q))
+  }, [people, search])
 
   const openNew = () => {
     setEditing(null)
     setModalOpen(true)
   }
 
-  const openEdit = (person: Person, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const openEdit = (person: Person) => {
     setEditing(person)
     setModalOpen(true)
   }
 
-  const handleDelete = async (person: Person, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const remove = async (person: Person) => {
+    const loanCount = totalsByPerson.get(person.id)?.count ?? 0
+    if (loanCount > 0) {
+      showToast(
+        `${person.name} tem ${loanCount} empréstimo(s) cadastrado(s). Exclua os empréstimos antes de excluir a pessoa.`,
+        'warning',
+      )
+      return
+    }
     const ok = await confirm({
       title: 'Excluir pessoa',
-      description: `Excluir "${person.name}"? Só é possível se não houver empréstimos vinculados.`,
+      description: `Excluir "${person.name}"? Essa ação não pode ser desfeita.`,
       confirmLabel: 'Excluir',
       variant: 'danger',
     })
     if (!ok) return
     try {
-      await deleteMutation.mutateAsync(person.id)
+      await deletePerson.mutateAsync(person.id)
       showToast('Pessoa excluída.', 'success')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao excluir pessoa.', 'error')
@@ -56,135 +81,86 @@ export function PeopleListPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <PageHeader
         title="Pessoas"
-        description="Clientes e tomadores de empréstimo"
         actions={
-          <Button onClick={openNew}>
-            <Icon icon="tabler:plus" className="size-4.5" />
+          <Button onClick={openNew} variant="secondary" className="hidden sm:inline-flex">
+            <Icon icon="tabler:user-plus" className="size-4.5" />
             Nova pessoa
           </Button>
         }
       />
 
-      <TextField
-        placeholder="Buscar por nome..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="sm:max-w-xs"
-      />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Icon icon="tabler:search" className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-text-muted" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar pelo nome"
+            enterKeyHint="search"
+            className="h-12 w-full rounded-xl border border-border bg-surface pr-3 pl-10 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-brand-500 sm:h-10 sm:max-w-sm sm:text-sm"
+          />
+        </div>
+        <Button variant="secondary" size="icon" onClick={openNew} aria-label="Nova pessoa" className="sm:hidden">
+          <Icon icon="tabler:user-plus" className="size-5" />
+        </Button>
+      </div>
 
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
+            <Skeleton key={i} className="h-16 w-full rounded-2xl" />
           ))}
         </div>
-      ) : !people || people.length === 0 ? (
+      ) : visible.length === 0 ? (
         <EmptyState
           icon="tabler:users"
-          title="Nenhuma pessoa cadastrada"
-          description="Cadastre a primeira pessoa para começar a registrar empréstimos."
-          action={
-            <Button variant="secondary" size="sm" onClick={openNew}>
-              Nova pessoa
-            </Button>
-          }
+          title={search ? 'Ninguém com esse nome' : 'Nenhuma pessoa cadastrada'}
+          description={search ? undefined : 'Você também pode cadastrar a pessoa direto ao criar um empréstimo.'}
         />
       ) : (
-        <>
-          {/* Desktop/tablet: tabela */}
-          <TableContainer className="hidden sm:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>CPF</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {people.map((person) => (
-                  <TableRow key={person.id} clickable onClick={() => navigate(`/pessoas/${person.id}`)}>
-                    <TableCell className="font-medium">{person.name}</TableCell>
-                    <TableCell className="text-text-secondary">{person.cpf || '—'}</TableCell>
-                    <TableCell className="text-text-secondary">{person.phone || '—'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        <WhatsAppButton phone={person.phone} />
-                        <RowActions person={person} onEdit={openEdit} onDelete={handleDelete} />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          {/* Mobile: cards empilhados */}
-          <div className="flex flex-col gap-2 sm:hidden">
-            {people.map((person) => (
-              <Card
-                key={person.id}
-                className="cursor-pointer p-4 active:bg-surface-hover"
-                onClick={() => navigate(`/pessoas/${person.id}`)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-text-primary">{person.name}</p>
-                    <p className="mt-0.5 text-sm text-text-secondary">{person.phone || person.cpf || 'Sem contato'}</p>
+        <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+          {visible.map((person) => {
+            const t = totalsByPerson.get(person.id)
+            const open = (t?.pending ?? 0) + (t?.overdue ?? 0)
+            return (
+              <li key={person.id} className="flex items-center pr-2">
+                <Link
+                  to={`/pessoas/${person.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 transition-colors active:bg-surface-hover"
+                >
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-sm font-semibold text-brand-300">
+                    {person.name.trim().charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <WhatsAppButton phone={person.phone} />
-                    <RowActions person={person} onEdit={openEdit} onDelete={handleDelete} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-medium text-text-primary sm:text-sm">{person.name}</p>
+                    <p className="truncate text-sm text-text-muted">
+                      {open > 0 ? (
+                        <>
+                          Deve {formatCurrency(open)}
+                          {t && t.overdueCount > 0 && <span className="text-danger"> · {t.overdueCount} atrasado(s)</span>}
+                        </>
+                      ) : (
+                        person.phone || 'Nada em aberto'
+                      )}
+                    </p>
                   </div>
+                </Link>
+                <div className="flex shrink-0 items-center">
+                  <WhatsAppButton phone={person.phone} />
+                  <RowAction icon="tabler:pencil" label={`Editar ${person.name}`} onClick={() => openEdit(person)} />
+                  <RowAction icon="tabler:trash" label={`Excluir ${person.name}`} tone="danger" onClick={() => remove(person)} />
                 </div>
-              </Card>
-            ))}
-          </div>
-        </>
+              </li>
+            )
+          })}
+        </ul>
       )}
 
       <PersonFormModal open={modalOpen} onOpenChange={setModalOpen} person={editing} />
     </div>
-  )
-}
-
-function RowActions({
-  person,
-  onEdit,
-  onDelete,
-}: {
-  person: Person
-  onEdit: (person: Person, e: React.MouseEvent) => void
-  onDelete: (person: Person, e: React.MouseEvent) => void
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
-        >
-          <Icon icon="tabler:dots-vertical" className="size-4.5" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => {}} onClick={(e) => onEdit(person, e)}>
-          <Icon icon="tabler:edit" className="size-4" />
-          Editar
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onSelect={() => {}}
-          onClick={(e) => onDelete(person, e)}
-          className="text-danger data-[highlighted]:text-danger"
-        >
-          <Icon icon="tabler:trash" className="size-4" />
-          Excluir
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }

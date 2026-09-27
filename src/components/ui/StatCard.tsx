@@ -1,57 +1,49 @@
 import { Icon } from '@iconify/react'
 import { cn } from '@/lib/cn'
-import { GlassSurface } from '@/components/effects/GlassSurface'
 import { Skeleton } from './Skeleton'
+
+export type StatTone = 'brand' | 'gold' | 'success' | 'danger' | 'neutral'
 
 interface StatCardProps {
   label: string
   value: string
   icon: string
   loading?: boolean
-  trend?: { value: string; positive: boolean }
-  tone?: 'brand' | 'gold' | 'success' | 'danger' | 'neutral'
+  hint?: string
+  tone?: StatTone
+  className?: string
 }
 
-const toneStyles: Record<NonNullable<StatCardProps['tone']>, string> = {
-  brand: 'text-brand-400 bg-brand-500/10 border-brand-600/30',
-  gold: 'text-gold-400 bg-gold-muted border-gold-600/30',
-  success: 'text-success bg-success-muted border-success/30',
-  danger: 'text-danger bg-danger-muted border-danger/30',
-  neutral: 'text-text-secondary bg-surface-elevated border-border-strong',
+const toneStyles: Record<StatTone, string> = {
+  brand: 'text-brand-400 bg-brand-500/10',
+  gold: 'text-gold-400 bg-gold-muted',
+  success: 'text-success bg-success-muted',
+  danger: 'text-danger bg-danger-muted',
+  neutral: 'text-text-secondary bg-surface-elevated',
 }
 
-export function StatCard({ label, value, icon, loading, trend, tone = 'brand' }: StatCardProps) {
+export function StatCard({ label, value, icon, loading, hint, tone = 'neutral', className }: StatCardProps) {
   return (
-    <GlassSurface
-      borderRadius={12}
-      backgroundOpacity={0.55}
-      distortionScale={-40}
-      blur={9}
-      saturation={1.15}
-      contentClassName="p-5"
-    >
-      <div className="flex items-start justify-between">
-        <p className="text-sm text-text-secondary">{label}</p>
-        <div className={cn('flex size-9 items-center justify-center rounded-lg border', toneStyles[tone])}>
-          <Icon icon={icon} className="size-4.5" />
+    <div className={cn('rounded-2xl border border-border bg-surface p-4', className)}>
+      <div className="flex items-center gap-2">
+        <div className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg', toneStyles[tone])}>
+          <Icon icon={icon} className="size-4" />
         </div>
+        <p className="truncate text-xs font-medium text-text-secondary sm:text-sm">{label}</p>
       </div>
       {loading ? (
-        <Skeleton className="mt-3 h-8 w-28" />
+        <Skeleton className="mt-3 h-7 w-24" />
       ) : (
-        <p className="mt-2 text-2xl font-semibold tracking-tight text-text-primary">{value}</p>
-      )}
-      {trend && !loading && (
         <p
           className={cn(
-            'mt-2 flex items-center gap-1 text-xs font-medium',
-            trend.positive ? 'text-success' : 'text-danger',
+            'mt-2 text-base font-semibold tracking-tight break-words min-[380px]:text-lg sm:text-xl',
+            tone === 'danger' ? 'text-danger' : tone === 'gold' ? 'text-gold-400' : 'text-text-primary',
           )}
         >
-          <Icon icon={trend.positive ? 'tabler:trending-up' : 'tabler:trending-down'} className="size-3.5" />
-          {trend.value}
+          {value}
         </p>
       )}
-    </GlassSurface>
+      {hint && !loading && <p className="mt-0.5 truncate text-xs text-text-muted">{hint}</p>}
+    </div>
   )
 }

@@ -1,21 +1,22 @@
 import { Icon } from '@iconify/react'
 import { BrandMark } from '@/components/shared/BrandMark'
+import { UserMenu } from './UserMenu'
 
-interface MobileHeaderProps {
-  onMenuClick: () => void
-}
-
-export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
+export function MobileHeader() {
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur-sm lg:hidden">
-      <button
-        type="button"
-        onClick={onMenuClick}
-        className="cursor-pointer rounded-md p-1.5 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
-      >
-        <Icon icon="tabler:menu-2" className="size-5.5" />
-      </button>
+    <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center justify-between border-b border-border bg-surface/95 pr-2 pl-4 pt-[env(safe-area-inset-top)] backdrop-blur-sm lg:hidden">
       <BrandMark size="sm" />
+      <UserMenu
+        trigger={
+          <button
+            type="button"
+            aria-label="Minha conta"
+            className="flex size-11 cursor-pointer items-center justify-center rounded-full text-text-secondary active:bg-surface-hover"
+          >
+            <Icon icon="tabler:user-circle" className="size-6" />
+          </button>
+        }
+      />
     </header>
   )
 }

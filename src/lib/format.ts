@@ -35,3 +35,8 @@ export function todayISO(): string {
 export function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`
 }
+
+/** Texto para busca: minúsculo e sem acento ("João" encontra "joao"). */
+export function normalizeSearch(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+}

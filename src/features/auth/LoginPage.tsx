@@ -125,7 +125,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => setMode('forgot')}
-                className="mt-4 w-full cursor-pointer text-center text-sm text-text-secondary transition-colors hover:text-brand-400"
+                className="mt-2 min-h-11 w-full cursor-pointer text-center text-sm text-text-secondary transition-colors hover:text-brand-400"
               >
                 Esqueci minha senha
               </button>
@@ -162,7 +162,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={backToLogin}
-                className="mt-4 flex w-full cursor-pointer items-center justify-center gap-1.5 text-center text-sm text-text-secondary transition-colors hover:text-brand-400"
+                className="mt-2 flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 text-center text-sm text-text-secondary transition-colors hover:text-brand-400"
               >
                 <Icon icon="tabler:arrow-left" className="size-4" />
                 Voltar ao login

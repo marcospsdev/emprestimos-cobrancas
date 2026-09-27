@@ -12,7 +12,7 @@ export interface TextareaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaE
 }
 
 export const TextareaField = forwardRef<HTMLTextAreaElement, TextareaFieldProps>(
-  ({ label, error, hint, required, className, id, rows = 3, ...props }, ref) => {
+  ({ label, error, hint, required, className, id, rows = 4, ...props }, ref) => {
     const autoId = useId()
     const fieldId = id ?? autoId
     return (
@@ -21,7 +21,7 @@ export const TextareaField = forwardRef<HTMLTextAreaElement, TextareaFieldProps>
           ref={ref}
           id={fieldId}
           rows={rows}
-          className={cn(inputBaseClass, 'h-auto resize-none py-2', error && inputErrorClass, className)}
+          className={cn(inputBaseClass, 'h-auto min-h-28 resize-y py-3 leading-relaxed sm:h-auto sm:min-h-24 sm:py-2', error && inputErrorClass, className)}
           aria-invalid={!!error}
           {...props}
         />
