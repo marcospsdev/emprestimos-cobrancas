@@ -9,12 +9,14 @@ import { BrandMark } from '@/components/shared/BrandMark'
 import { DeveloperCredit } from '@/components/shared/DeveloperCredit'
 import { Button } from '@/components/ui/Button'
 import { PasswordField } from '@/components/ui/form/PasswordField'
+import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/context/AuthContext'
 import { resetPasswordSchema, type ResetPasswordFormValues } from './schema'
 
 export function ResetPasswordPage() {
   const { updatePassword } = useAuth()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [formError, setFormError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
 
@@ -29,8 +31,10 @@ export function ResetPasswordPage() {
     const { error } = await updatePassword(values.newPassword)
     if (error) {
       setFormError(error)
+      showToast(error, 'error')
       return
     }
+    showToast('Senha redefinida com sucesso.', 'success')
     setDone(true)
     setTimeout(() => navigate('/', { replace: true }), 1800)
   }

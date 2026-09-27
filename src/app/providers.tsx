@@ -5,12 +5,14 @@ import { AuthProvider } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ui/Toast'
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog'
 import { TooltipProvider } from '@/components/ui/Tooltip'
+import { QueryErrorToaster } from '@/components/shared/QueryErrorToaster'
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ToastProvider>
+          <QueryErrorToaster />
           <ConfirmProvider>
             <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
           </ConfirmProvider>

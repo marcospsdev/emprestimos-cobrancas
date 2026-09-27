@@ -21,6 +21,7 @@ export function ExportButtons<T>({ title, sheetName, filenameBase, columns, rows
     try {
       const { exportTableToPdf } = await import('@/lib/pdf/tableExport')
       exportTableToPdf(title, columns, rows, `${filenameBase}.pdf`)
+      showToast('PDF gerado. Veja nos downloads.', 'success')
     } catch {
       showToast('Erro ao gerar PDF.', 'error')
     }
@@ -30,6 +31,7 @@ export function ExportButtons<T>({ title, sheetName, filenameBase, columns, rows
     try {
       const { exportTableToExcel } = await import('@/lib/excel/workbookExport')
       await exportTableToExcel(sheetName, columns, rows, `${filenameBase}.xlsx`)
+      showToast('Planilha Excel gerada. Veja nos downloads.', 'success')
     } catch {
       showToast('Erro ao gerar arquivo Excel.', 'error')
     }

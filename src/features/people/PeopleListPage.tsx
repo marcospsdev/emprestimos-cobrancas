@@ -74,7 +74,7 @@ export function PeopleListPage() {
     if (!ok) return
     try {
       await deletePerson.mutateAsync(person.id)
-      showToast('Pessoa excluída.', 'success')
+      showToast(`${person.name} excluído(a).`, 'success')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao excluir pessoa.', 'error')
     }

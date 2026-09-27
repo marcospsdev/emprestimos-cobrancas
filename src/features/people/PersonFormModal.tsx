@@ -48,10 +48,10 @@ export function PersonFormModal({ open, onOpenChange, person }: PersonFormModalP
     try {
       if (isEdit) {
         await updateMutation.mutateAsync({ id: person.id, payload })
-        showToast('Pessoa atualizada.', 'success')
+        showToast(`${payload.name} atualizado(a).`, 'success')
       } else {
         await createMutation.mutateAsync(payload)
-        showToast('Pessoa cadastrada.', 'success')
+        showToast(`${payload.name} cadastrado(a).`, 'success')
       }
       onOpenChange(false)
     } catch (error) {
@@ -62,7 +62,7 @@ export function PersonFormModal({ open, onOpenChange, person }: PersonFormModalP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="sm">
-        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col" noValidate>
+        <form onSubmit={handleSubmit(onSubmit, () => showToast('Confira os campos destacados em vermelho.', 'warning'))} className="flex min-h-0 flex-1 flex-col" noValidate>
           <DialogHeader>
             <DialogTitle>{isEdit ? 'Editar pessoa' : 'Nova pessoa'}</DialogTitle>
           </DialogHeader>

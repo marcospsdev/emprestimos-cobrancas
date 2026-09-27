@@ -10,12 +10,14 @@ import { DeveloperCredit } from '@/components/shared/DeveloperCredit'
 import { Button } from '@/components/ui/Button'
 import { TextField } from '@/components/ui/form/TextField'
 import { PasswordField } from '@/components/ui/form/PasswordField'
+import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/context/AuthContext'
 import { loginSchema, forgotPasswordSchema, type LoginFormValues, type ForgotPasswordFormValues } from './schema'
 
 export function LoginPage() {
   const { signIn, requestPasswordReset } = useAuth()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [mode, setMode] = useState<'login' | 'forgot'>('login')
   const [formError, setFormError] = useState<string | null>(null)
   const [forgotSent, setForgotSent] = useState(false)
@@ -37,15 +39,24 @@ export function LoginPage() {
     const { error } = await signIn(values.email, values.password)
     if (error) {
       setFormError(error)
+      showToast(error, 'error')
       return
     }
+    showToast('Bem-vindo de volta!', 'success')
     navigate('/', { replace: true })
   }
 
   const onSubmitForgot = async (values: ForgotPasswordFormValues) => {
     setFormError(null)
-    await requestPasswordReset(values.email)
+    const { error } = await requestPasswordReset(values.email)
+    if (error) {
+      // Ex.: limite de envios por hora do Supabase.
+      setFormError(error)
+      showToast(error, 'error')
+      return
+    }
     setForgotSent(true)
+    showToast('Se o e-mail estiver cadastrado, o link de recuperação foi enviado.', 'success')
   }
 
   const backToLogin = () => {

@@ -104,12 +104,16 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
   const onSubmit = async (values: LoanFormValues) => {
     try {
       let personId = values.person_id
+      let personName = people?.find((p) => p.id === values.person_id)?.name ?? ''
+      let createdPerson = false
       if (values.person_mode === 'new') {
         const person = await createPerson.mutateAsync({
           name: values.new_person_name.trim(),
           phone: values.new_person_phone.trim() || null,
         })
         personId = person.id
+        personName = person.name
+        createdPerson = true
         // Se salvar o empréstimo falhar logo abaixo, tentar de novo não
         // cadastra a mesma pessoa duas vezes.
         setValue('person_mode', 'existing')
@@ -128,12 +132,21 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
         payment_method: values.is_paid ? values.payment_method || null : null,
       }
 
+      const title = payload.title
       if (isEdit) {
         await updateLoan.mutateAsync({ id: loan.id, payload })
-        showToast('Empréstimo atualizado.', 'success')
+        // Mudou o pagamento pela edição? Diz isso, em vez de só "atualizado".
+        if (payload.paid_at && !loan.paid_at) showToast(`"${title}" marcado como pago.`, 'success')
+        else if (!payload.paid_at && loan.paid_at) showToast(`"${title}" voltou para não pago.`, 'info')
+        else showToast(`"${title}" atualizado.`, 'success')
       } else {
         await createLoan.mutateAsync(payload)
-        showToast('Empréstimo cadastrado.', 'success')
+        showToast(
+          createdPerson
+            ? `${personName} cadastrado(a) e empréstimo "${title}" criado.`
+            : `Empréstimo "${title}" cadastrado${personName ? ` para ${personName}` : ''}.`,
+          'success',
+        )
       }
       onOpenChange(false)
     } catch (error) {
@@ -157,7 +170,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
     if (!ok) return
     try {
       await deleteLoan.mutateAsync(loan.id)
-      showToast('Empréstimo excluído.', 'success')
+      showToast(`"${loan.title}" excluído.`, 'success')
       onOpenChange(false)
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao excluir empréstimo.', 'error')
@@ -167,7 +180,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="md">
-        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col" noValidate>
+        <form onSubmit={handleSubmit(onSubmit, () => showToast('Confira os campos destacados em vermelho.', 'warning'))} className="flex min-h-0 flex-1 flex-col" noValidate>
           <DialogHeader>
             <DialogTitle>{isEdit ? 'Editar empréstimo' : 'Novo empréstimo'}</DialogTitle>
             {!isEdit && <DialogDescription>Para quem, quanto e quando vai receber.</DialogDescription>}

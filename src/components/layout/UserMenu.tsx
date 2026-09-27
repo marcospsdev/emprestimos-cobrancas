@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu'
+import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/context/AuthContext'
 import { ChangePasswordDialog } from '@/features/auth/ChangePasswordDialog'
 
@@ -16,6 +17,12 @@ import { ChangePasswordDialog } from '@/features/auth/ChangePasswordDialog'
 export function UserMenu({ trigger, side = 'bottom' }: { trigger: ReactNode; side?: 'top' | 'bottom' }) {
   const { user, signOut } = useAuth()
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const { showToast } = useToast()
+
+  const handleSignOut = async () => {
+    await signOut()
+    showToast('Você saiu da conta.', 'info')
+  }
 
   return (
     <>
@@ -28,7 +35,7 @@ export function UserMenu({ trigger, side = 'bottom' }: { trigger: ReactNode; sid
             <Icon icon="tabler:key" className="size-4" />
             Alterar senha
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => signOut()} className="text-danger data-[highlighted]:text-danger">
+          <DropdownMenuItem onSelect={handleSignOut} className="text-danger data-[highlighted]:text-danger">
             <Icon icon="tabler:logout" className="size-4" />
             Sair
           </DropdownMenuItem>

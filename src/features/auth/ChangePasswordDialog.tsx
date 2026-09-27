@@ -33,6 +33,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     const { error } = await changePassword(values.currentPassword, values.newPassword)
     if (error) {
       setError('currentPassword', { message: error })
+      showToast(error, 'error')
       return
     }
     showToast('Senha alterada com sucesso.', 'success')
@@ -42,7 +43,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent size="sm">
-        <form onSubmit={handleSubmit(onSubmit)} className="flex h-full min-h-0 flex-col">
+        <form onSubmit={handleSubmit(onSubmit, () => showToast('Confira os campos destacados em vermelho.', 'warning'))} className="flex h-full min-h-0 flex-col">
           <DialogHeader>
             <DialogTitle>Alterar senha</DialogTitle>
             <DialogDescription>Confirme sua senha atual para definir uma nova.</DialogDescription>

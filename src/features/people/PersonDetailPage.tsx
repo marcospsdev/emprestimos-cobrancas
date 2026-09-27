@@ -47,7 +47,7 @@ export function PersonDetailPage() {
     if (!ok) return
     try {
       await deleteMutation.mutateAsync(person.id)
-      showToast('Pessoa excluída.', 'success')
+      showToast(`${person.name} excluído(a).`, 'success')
       navigate('/pessoas')
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Erro ao excluir pessoa.', 'error')

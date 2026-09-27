@@ -53,7 +53,7 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
         id: loan.id,
         payload: { paid_at: null, payment_method: null },
       })
-      showToast('Pagamento desmarcado.', 'info')
+      showToast(`"${loan.title}" voltou para não pago.`, 'info')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao desmarcar.', 'error')
     }
@@ -69,7 +69,7 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
     if (!ok) return
     try {
       await deleteLoan.mutateAsync(loan.id)
-      showToast('Empréstimo excluído.', 'success')
+      showToast(`"${loan.title}" excluído.`, 'success')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao excluir empréstimo.', 'error')
     }

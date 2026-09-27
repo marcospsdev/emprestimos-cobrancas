@@ -43,7 +43,7 @@ function MarkPaidForm({ loan, onClose }: { loan: Loan; onClose: () => void }) {
     if (!paidAt) return
     try {
       await updateMutation.mutateAsync({ id: loan.id, payload: { paid_at: paidAt, payment_method: method || null } })
-      showToast('Marcado como pago.', 'success')
+      showToast(`"${loan.title}" marcado como pago${method ? ` (${method})` : ''}.`, 'success')
       onClose()
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao marcar como pago.', 'error')
