@@ -300,7 +300,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
               </div>
 
               {/* ---- Datas ---- */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-4">
                 <DateField label="Data do empréstimo" required error={errors.loan_date?.message} {...register('loan_date')} />
                 <DateField label="Pagar até" required error={errors.due_date?.message} {...register('due_date')} />
               </div>

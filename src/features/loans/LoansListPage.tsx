@@ -94,8 +94,8 @@ export function LoansListPage() {
               columns={EXPORT_COLUMNS}
               rows={visible}
             />
-            {/* No celular: "Novo empréstimo" primeiro e ocupando o espaço; no desktop, depois do Exportar. */}
-            <Button onClick={() => openNewLoan()} className="order-first flex-1 sm:order-none sm:flex-none">
+            {/* Exportar à esquerda, "Novo empréstimo" à direita ocupando o resto (no celular). */}
+            <Button onClick={() => openNewLoan()} className="flex-1 sm:flex-none">
               <Icon icon="tabler:plus" className="size-5 sm:size-4.5" />
               Novo empréstimo
             </Button>
