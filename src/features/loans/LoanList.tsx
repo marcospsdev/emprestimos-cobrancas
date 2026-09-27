@@ -75,9 +75,13 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
     }
   }
 
+  // A legenda aparece sempre (carregando, vazia ou com itens), para a tela não "pular".
+  const legend = showLegend && <LoanStatusLegend className="px-1" />
+
   if (loading) {
     return (
       <div className="flex flex-col gap-2">
+        {legend}
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-28 w-full rounded-2xl" />
         ))}
@@ -85,11 +89,18 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
     )
   }
 
-  if (!loans || loans.length === 0) return <>{empty}</>
+  if (!loans || loans.length === 0) {
+    return (
+      <div className="flex flex-col gap-2">
+        {legend}
+        {empty}
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-2">
-      {showLegend && <LoanStatusLegend className="px-1" />}
+      {legend}
       <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
         {loans.map((loan) => {
           const status = getLoanStatus(loan, today)
