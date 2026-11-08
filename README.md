@@ -6,8 +6,6 @@ Para quem, quanto e quando vai receber — com cobrança pronta no WhatsApp.
   <img src="docs/preview.webp" alt="Resumo do mês com valores a receber e atrasados" width="900">
 </p>
 
-> Repositório privado. Não compartilhe chaves, tokens ou arquivos `.env` fora do projeto.
-
 ---
 
 ## Sumário
@@ -83,12 +81,16 @@ Design system e regras de UI/UX mobile: [`docs/design-system.md`](docs/design-sy
 
 ---
 
+---
+
 ## Recuperação de senha
 
 A tela de login usa o e-mail embutido do Supabase Auth (`resetPasswordForEmail`), sem precisar
 configurar SMTP. Ele envia poucos e-mails por hora e pode cair no spam. Se precisar de mais,
 configure um SMTP em **Authentication → Settings → SMTP Settings**, sem mudar nada no código.
 O link do e-mail leva para `/redefinir-senha`.
+
+---
 
 ---
 
