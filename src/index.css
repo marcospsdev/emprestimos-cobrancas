@@ -22,6 +22,9 @@
   --color-brand-700: #047857;
   --color-brand-glow: rgb(16 185 129 / 0.35);
 
+  /* Fundo escurecido atrás de modais */
+  --color-overlay: rgb(0 0 0 / 0.7);
+
   /* Destaque (dourado, reservado a métricas de juros/lucro) */
   --color-gold-100: #fef3c7;
   --color-gold-400: #fbbf24;
@@ -87,13 +90,59 @@
   }
 }
 
+/* =====================================================
+   Tema claro. Os tokens acima são o tema escuro (padrão); aqui só trocam os
+   valores. Tons "300/400" (usados como texto de destaque) ficam mais escuros
+   para manter contraste sobre fundo branco.
+   ===================================================== */
+:root[data-theme='light'] {
+  --color-background: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0f2f5;
+  --color-surface-elevated: #ffffff;
+  --color-border: #e3e6eb;
+  --color-border-strong: #cdd2da;
+
+  --color-brand-100: #065f46;
+  --color-brand-200: #047857;
+  --color-brand-300: #047857;
+  --color-brand-400: #059669;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-glow: rgb(16 185 129 / 0.25);
+
+  --color-overlay: rgb(15 23 42 / 0.45);
+
+  --color-gold-100: #78350f;
+  --color-gold-400: #b45309;
+  --color-gold-500: #d97706;
+  --color-gold-600: #b45309;
+  --color-gold-muted: rgb(217 119 6 / 0.12);
+
+  --color-text-primary: #111418;
+  --color-text-secondary: #4b5260;
+  --color-text-muted: #6b7280;
+
+  --color-success: #15803d;
+  --color-success-muted: rgb(22 163 74 / 0.12);
+  --color-danger: #dc2626;
+  --color-danger-muted: rgb(220 38 38 / 0.1);
+  --color-warning: #a16207;
+  --color-warning-muted: rgb(202 138 4 / 0.14);
+  --color-info: #0369a1;
+  --color-info-muted: rgb(2 132 199 / 0.12);
+
+  --shadow-brand-glow: 0 0 0 1px rgb(16 185 129 / 0.35), 0 8px 24px -10px rgb(16 185 129 / 0.35);
+  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.05), 0 10px 28px -14px rgb(16 24 40 / 0.2);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
   }
 
   html {
-    color-scheme: dark;
     overflow-x: hidden;
   }
 
@@ -120,16 +169,6 @@
   button:disabled,
   [role='button'][aria-disabled='true'] {
     cursor: not-allowed;
-  }
-
-  input[type='date'] {
-    position: relative;
-  }
-
-  input[type='date']::-webkit-calendar-picker-indicator {
-    position: absolute;
-    inset-inline-end: 0.5rem;
-    cursor: pointer;
   }
 
   input[type='password']::-ms-reveal,

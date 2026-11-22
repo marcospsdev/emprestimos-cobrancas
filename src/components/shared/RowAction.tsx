@@ -29,7 +29,7 @@ export function RowAction({ icon, label, onClick, tone = 'neutral', disabled }: 
       title={label}
       disabled={disabled}
       className={cn(
-        'flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl transition-colors disabled:opacity-50 sm:size-9 sm:rounded-lg',
+        'flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-xl transition-colors disabled:opacity-50 sm:size-9 sm:rounded-lg',
         tone === 'danger'
           ? 'text-text-muted hover:bg-danger-muted hover:text-danger active:bg-danger-muted active:text-danger'
           : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary active:bg-surface-hover',

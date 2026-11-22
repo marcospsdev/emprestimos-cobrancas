@@ -29,7 +29,7 @@ export async function deletePerson(id: string): Promise<void> {
   const { error } = await supabase.from('people').delete().eq('id', id)
   if (error) {
     // 23503 = violação de chave estrangeira (a pessoa ainda tem empréstimos).
-    if (error.code === '23503') throw new Error('Essa pessoa tem empréstimos cadastrados. Exclua os empréstimos antes.')
+    if (error.code === '23503') throw new Error('Esse cliente tem empréstimos cadastrados. Exclua os empréstimos antes.')
     throw new Error(error.message)
   }
 }

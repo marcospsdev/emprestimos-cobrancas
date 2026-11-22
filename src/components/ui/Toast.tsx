@@ -17,7 +17,8 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
-const TOAST_DURATION = 4200
+// Erros e avisos ficam mais tempo: quem lê devagar precisa conseguir ler.
+const TOAST_DURATION: Record<ToastType, number> = { success: 4500, info: 4500, warning: 7000, error: 7000 }
 
 const ICONS: Record<ToastType, string> = {
   success: 'tabler:circle-check',
@@ -26,11 +27,13 @@ const ICONS: Record<ToastType, string> = {
   warning: 'tabler:alert-triangle',
 }
 
+// text-* define a cor do status; o fundo tingido, a faixa lateral e a barra de
+// tempo usam essa cor (bg-current), então cada tipo fica com a sua cor.
 const STYLES: Record<ToastType, string> = {
-  success: 'border-success/30 text-success',
-  error: 'border-danger/30 text-danger',
-  info: 'border-info/30 text-info',
-  warning: 'border-warning/30 text-warning',
+  success: 'border-success/50 text-success',
+  error: 'border-danger/50 text-danger',
+  info: 'border-info/50 text-info',
+  warning: 'border-warning/50 text-warning',
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -45,7 +48,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (message: string, type: ToastType = 'info') => {
       const id = nextId.current++
       setToasts((prev) => [...prev, { id, message, type }])
-      setTimeout(() => removeToast(id), TOAST_DURATION)
+      setTimeout(() => removeToast(id), TOAST_DURATION[type])
     },
     [removeToast],
   )
@@ -59,24 +62,30 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             role="status"
             className={cn(
-              'pointer-events-auto relative overflow-hidden rounded-lg border bg-surface-elevated px-4 py-3 shadow-card animate-fade-in',
+              'pointer-events-auto relative overflow-hidden rounded-xl border bg-surface-elevated py-3 pr-3 pl-4 shadow-card animate-fade-in',
               STYLES[t.type],
             )}
           >
-            <div className="flex items-start gap-2.5">
-              <Icon icon={ICONS[t.type]} className="mt-0.5 size-4.5 shrink-0" />
-              <p className="text-sm text-text-primary">{t.message}</p>
+            {/* Fundo tingido na cor do status + faixa lateral */}
+            <div className="pointer-events-none absolute inset-0 bg-current opacity-[0.16]" aria-hidden />
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-current" aria-hidden />
+            <div className="relative flex items-start gap-3">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-current/20">
+                <Icon icon={ICONS[t.type]} className="size-4.5" />
+              </span>
+              <p className="min-w-0 flex-1 self-center text-sm font-medium text-text-primary">{t.message}</p>
               <button
                 type="button"
                 onClick={() => removeToast(t.id)}
-                className="ml-auto cursor-pointer text-text-muted transition-colors hover:text-text-primary"
+                aria-label="Fechar aviso"
+                className="-mr-1 flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-muted transition-colors hover:text-text-primary"
               >
                 <Icon icon="tabler:x" className="size-4" />
               </button>
             </div>
             <div
-              className="absolute bottom-0 left-0 h-0.5 bg-current opacity-40"
-              style={{ animation: `toast-progress ${TOAST_DURATION}ms linear forwards` }}
+              className="absolute bottom-0 left-0 h-0.5 bg-current opacity-60"
+              style={{ animation: `toast-progress ${TOAST_DURATION[t.type]}ms linear forwards` }}
             />
           </div>
         ))}

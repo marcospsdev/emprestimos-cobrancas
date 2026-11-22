@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router'
 import { Icon } from '@iconify/react'
 import { BrandMark } from '@/components/shared/BrandMark'
-import { DeveloperCredit } from '@/components/shared/DeveloperCredit'
+import { ThemeToggleButton } from '@/components/shared/ThemeToggle'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/context/AuthContext'
 import { useLoanForm } from '@/features/loans/loanFormContext'
@@ -18,8 +18,9 @@ export function Sidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-surface lg:flex">
-      <div className="flex h-16 shrink-0 items-center border-b border-border px-5">
+      <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border pr-3 pl-5">
         <BrandMark size="sm" />
+        <ThemeToggleButton className="size-9 rounded-lg border-0 bg-transparent backdrop-blur-none" />
       </div>
 
       <div className="px-3 pt-4">
@@ -69,7 +70,6 @@ export function Sidebar() {
             </button>
           }
         />
-        <DeveloperCredit className="mt-2 px-3 text-center" />
       </div>
     </aside>
   )

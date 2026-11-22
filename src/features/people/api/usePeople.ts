@@ -21,6 +21,7 @@ function useInvalidatePeople() {
   return () => {
     queryClient.invalidateQueries({ queryKey: ['people'] })
     queryClient.invalidateQueries({ queryKey: ['loans'] })
+    queryClient.invalidateQueries({ queryKey: ['payments'] })
   }
 }
 

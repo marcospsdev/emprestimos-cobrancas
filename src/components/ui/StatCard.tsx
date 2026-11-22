@@ -2,7 +2,7 @@ import { Icon } from '@iconify/react'
 import { cn } from '@/lib/cn'
 import { Skeleton } from './Skeleton'
 
-export type StatTone = 'brand' | 'gold' | 'success' | 'danger' | 'neutral'
+export type StatTone = 'brand' | 'gold' | 'success' | 'danger' | 'info' | 'neutral'
 
 interface StatCardProps {
   label: string
@@ -19,6 +19,7 @@ const toneStyles: Record<StatTone, string> = {
   gold: 'text-gold-400 bg-gold-muted',
   success: 'text-success bg-success-muted',
   danger: 'text-danger bg-danger-muted',
+  info: 'text-info bg-info-muted',
   neutral: 'text-text-secondary bg-surface-elevated',
 }
 
@@ -37,7 +38,7 @@ export function StatCard({ label, value, icon, loading, hint, tone = 'neutral', 
         <p
           className={cn(
             'mt-2 text-base font-semibold tracking-tight break-words min-[380px]:text-lg sm:text-xl',
-            tone === 'danger' ? 'text-danger' : tone === 'gold' ? 'text-gold-400' : 'text-text-primary',
+            tone === 'danger' ? 'text-danger' : tone === 'gold' ? 'text-gold-400' : tone === 'info' ? 'text-info' : 'text-text-primary',
           )}
         >
           {value}

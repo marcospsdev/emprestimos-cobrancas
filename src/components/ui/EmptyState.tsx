@@ -15,7 +15,7 @@ export function EmptyState({ icon = 'tabler:inbox', title, description, action }
         <Icon icon={icon} className="size-6" />
       </div>
       <div>
-        <p className="text-sm font-medium text-text-primary">{title}</p>
+        <p className="text-base font-medium text-text-primary sm:text-sm">{title}</p>
         {description && <p className="mt-1 max-w-sm text-sm text-text-secondary">{description}</p>}
       </div>
       {action}

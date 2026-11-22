@@ -21,7 +21,6 @@ Para quem, quanto e quando vai receber — com cobrança pronta no WhatsApp.
 - [Variáveis de ambiente](#variáveis-de-ambiente)
 - [Scripts](#scripts)
 - [Deploy](#deploy)
-- [Autor](#autor)
 
 ---
 
@@ -176,7 +175,7 @@ src/
 ### Instalação
 
 ```bash
-git clone https://github.com/marcospsdev/emprestimos-cobrancas.git
+git clone <url-do-repositorio> emprestimos-cobrancas
 cd emprestimos-cobrancas
 npm install
 cp .env.example .env.local   # preencha os valores (veja abaixo)
@@ -188,7 +187,7 @@ npm run dev               # http://localhost:5173
 ## Configuração do Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (o plano gratuito é suficiente).
-2. No **SQL Editor**, cole e execute o conteúdo de `supabase-schema.sql`. Ele cria as tabelas, as regras de segurança (RLS) e o que mais o app usa.
+2. No **SQL Editor**, cole e execute o conteúdo de `supabase-schema.sql`. Ele cria as tabelas, as regras de segurança (RLS) e o que mais o app usa. Se o banco já existia, rode só os arquivos de `supabase/migrations/` (não apagam dados).
 3. Em **Authentication → Users → Add user**, crie o usuário que vai entrar no sistema (o app não tem tela de cadastro).
 4. Em **Settings → API**, copie a **Project URL** e a chave **anon public** para as variáveis de ambiente. Nunca use a chave `service_role` no front-end.
 
@@ -224,11 +223,3 @@ Baseie-se no `.env.example`. Nunca commite o `.env.local` nem arquivos com valor
 
 O `vercel.json` redireciona todas as rotas para o `index.html`, então as rotas do React funcionam ao recarregar a página.
 
----
-
-## Autor
-
-**Marcos Paulo** · Desenvolvedor Full-Stack
-
-- LinkedIn: [in/marcospsdev](https://www.linkedin.com/in/marcospsdev)
-- GitHub: [@marcospsdev](https://github.com/marcospsdev)

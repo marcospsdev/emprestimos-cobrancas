@@ -15,20 +15,22 @@ export function getWhatsAppLink(phone: string | null | undefined, message?: stri
 
 interface ChargeInfo {
   personName: string
-  title: string
+  /** Só os juros: se informado (> 0), a mensagem oferece pagar só os juros. */
+  interest?: number
   amount: number
   dueDate: string
   overdue: boolean
 }
 
 /** Mensagem de cobrança educada, pronta pra enviar — a pessoa só aperta "enviar". */
-export function buildChargeMessage({ personName, title, amount, dueDate, overdue }: ChargeInfo): string {
+export function buildChargeMessage({ personName, amount, interest, dueDate, overdue }: ChargeInfo): string {
   const firstName = personName.trim().split(/\s+/)[0] ?? personName
   const value = formatCurrency(amount)
   const date = formatDate(dueDate)
+  const option = interest && interest > 0 ? ` (ou ${formatCurrency(interest)} se for pagar só os juros deste mês)` : ''
   return overdue
-    ? `Olá, ${firstName}! Tudo bem? Passando para lembrar do empréstimo "${title}", no valor de ${value}, que venceu em ${date}. Consegue me avisar quando vai conseguir pagar?`
-    : `Olá, ${firstName}! Tudo bem? Passando para lembrar do empréstimo "${title}", no valor de ${value}, com pagamento combinado para ${date}.`
+    ? `Olá, ${firstName}! Tudo bem? Passando para lembrar do empréstimo no valor de ${value}${option}, que venceu em ${date}. Consegue me avisar quando vai conseguir pagar?`
+    : `Olá, ${firstName}! Tudo bem? Passando para lembrar do empréstimo no valor de ${value}${option}, com pagamento combinado para ${date}.`
 }
 
 /** Formata enquanto digita: (11) 91234-5678 */

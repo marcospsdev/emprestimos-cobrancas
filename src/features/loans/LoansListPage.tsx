@@ -12,9 +12,19 @@ import { formatCurrency, formatDate, normalizeSearch, todayISO } from '@/lib/for
 import type { ReportColumn } from '@/lib/reportColumn'
 import type { Loan, LoanStatus } from '@/types/database'
 import { useLoansQuery } from './api/useLoans'
+import { usePaymentsQuery } from './api/usePayments'
 import { LoanList } from './LoanList'
 import { useLoanForm } from './loanFormContext'
-import { STATUS_LABEL, getLoanStatus, sortLoans, summarizeLoans } from './status'
+import {
+  STATUS_BG_CLASS,
+  STATUS_CHIP_ACTIVE_CLASS,
+  STATUS_LABEL,
+  STATUS_TEXT_CLASS,
+  formatInterestRate,
+  getLoanStatus,
+  sortLoans,
+  summarizeLoans,
+} from './status'
 
 type Filter = 'todos' | LoanStatus
 
@@ -22,13 +32,14 @@ const FILTERS: Filter[] = ['todos', 'pendente', 'atrasado', 'pago']
 
 const EXPORT_COLUMNS: ReportColumn<Loan>[] = [
   { header: 'Pagar até', accessor: (l) => formatDate(l.due_date) },
-  { header: 'Título', accessor: (l) => l.title },
-  { header: 'Pessoa', accessor: (l) => l.person?.name ?? '—' },
+  { header: 'Cliente', accessor: (l) => l.person?.name ?? '—' },
   { header: 'Emprestado', accessor: (l) => formatCurrency(l.amount_lent), align: 'right' },
+  { header: 'Juros', accessor: (l) => formatInterestRate(l.interest_rate) || '0%', align: 'right' },
   { header: 'A receber', accessor: (l) => formatCurrency(l.amount_to_receive), align: 'right' },
   { header: 'Status', accessor: (l) => STATUS_LABEL[getLoanStatus(l)] },
   { header: 'Pago em', accessor: (l) => formatDate(l.paid_at) },
   { header: 'Forma', accessor: (l) => l.payment_method ?? '' },
+  { header: 'Descrição', accessor: (l) => l.description ?? '' },
 ]
 
 
@@ -56,10 +67,13 @@ export function LoansListPage() {
   const range = getMonthRange(month)
   const monthQuery = useLoansQuery(range, { enabled: !allOverdueMode })
   const overdueQuery = useLoansQuery({ overdueOnly: true })
+  // Juros pagos neste mês (o empréstimo em si já foi para o mês seguinte).
+  const paymentsQuery = usePaymentsQuery(range, { enabled: !allOverdueMode })
+  const monthPayments = useMemo(() => (allOverdueMode ? [] : (paymentsQuery.data ?? [])), [allOverdueMode, paymentsQuery.data])
 
   const today = todayISO()
   const baseLoans = allOverdueMode ? overdueQuery.data : monthQuery.data
-  const totals = useMemo(() => summarizeLoans(baseLoans ?? [], today), [baseLoans, today])
+  const totals = useMemo(() => summarizeLoans(baseLoans ?? [], today, monthPayments), [baseLoans, today, monthPayments])
 
   const olderOverdue = useMemo(
     () => (overdueQuery.data ?? []).filter((l) => l.due_date < range.from),
@@ -70,9 +84,17 @@ export function LoansListPage() {
     let list = baseLoans ?? []
     if (!allOverdueMode && filter !== 'todos') list = list.filter((l) => getLoanStatus(l, today) === filter)
     const q = normalizeSearch(search.trim())
-    if (q) list = list.filter((l) => normalizeSearch(`${l.title} ${l.person?.name ?? ''} ${l.description ?? ''}`).includes(q))
+    if (q) list = list.filter((l) => normalizeSearch(`${l.person?.name ?? ''} ${l.description ?? ''}`).includes(q))
     return sortLoans(list, today)
   }, [baseLoans, allOverdueMode, filter, search, today])
+
+  // Pagamentos de juros contam como "pagos": aparecem em Todos e em Pago.
+  const visiblePayments = useMemo(() => {
+    if (filter !== 'todos' && filter !== 'pago') return []
+    const q = normalizeSearch(search.trim())
+    if (!q) return monthPayments
+    return monthPayments.filter((p) => normalizeSearch(`${p.loan?.person?.name ?? ''} ${p.loan?.description ?? ''}`).includes(q))
+  }, [monthPayments, filter, search])
 
   const counts: Record<Filter, number> = {
     todos: totals.count,
@@ -137,9 +159,9 @@ export function LoansListPage() {
 
       {/* Resumo do que está na tela */}
       <div className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-surface p-3 text-center">
-        <Summary label="A receber" value={totals.pending} />
-        <Summary label="Atrasado" value={totals.overdue} danger />
-        <Summary label="Recebido" value={totals.received} success />
+        <Summary label="A receber" value={totals.pending} status="pendente" />
+        <Summary label="Atrasado" value={totals.overdue} status="atrasado" />
+        <Summary label="Recebido" value={totals.received} status="pago" />
       </div>
 
       {!allOverdueMode && (
@@ -155,12 +177,15 @@ export function LoansListPage() {
               aria-selected={filter === f}
               onClick={() => setParam('status', f === 'todos' ? null : f)}
               className={cn(
-                'flex h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors',
+                'flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors sm:h-10',
                 filter === f
-                  ? 'border-brand-500 bg-brand-500/15 text-brand-300'
+                  ? f === 'todos'
+                    ? 'border-text-secondary bg-surface-hover text-text-primary'
+                    : STATUS_CHIP_ACTIVE_CLASS[f]
                   : 'border-border-strong bg-surface text-text-secondary hover:bg-surface-hover',
               )}
             >
+              {f !== 'todos' && <span className={cn('size-2.5 rounded-full', STATUS_BG_CLASS[f])} aria-hidden />}
               {f === 'todos' ? 'Todos' : STATUS_LABEL[f]}
               <span className="text-xs opacity-70">{counts[f]}</span>
             </button>
@@ -174,7 +199,7 @@ export function LoansListPage() {
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por título ou pessoa"
+          placeholder="Buscar por cliente ou descrição"
           enterKeyHint="search"
           className="h-12 w-full rounded-xl border border-border bg-surface pr-3 pl-10 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-brand-500 sm:h-10 sm:max-w-sm sm:text-sm"
         />
@@ -182,7 +207,8 @@ export function LoansListPage() {
 
       <LoanList
         loans={visible}
-        loading={allOverdueMode ? overdueQuery.isLoading : monthQuery.isLoading}
+        payments={visiblePayments}
+        loading={allOverdueMode ? overdueQuery.isLoading : monthQuery.isLoading || paymentsQuery.isLoading}
         empty={
           <EmptyState
             icon="tabler:coins"
@@ -210,14 +236,18 @@ export function LoansListPage() {
   )
 }
 
-function Summary({ label, value, danger, success }: { label: string; value: number; danger?: boolean; success?: boolean }) {
+/** Total na cor do status (com a bolinha da legenda); zerado fica neutro. */
+function Summary({ label, value, status }: { label: string; value: number; status: LoanStatus }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs text-text-muted">{label}</p>
+      <p className="flex items-center justify-center gap-1.5 text-xs text-text-secondary sm:text-sm">
+        <span className={cn('size-2 shrink-0 rounded-full', STATUS_BG_CLASS[status])} aria-hidden />
+        {label}
+      </p>
       <p
         className={cn(
           'mt-0.5 text-[13px] leading-tight font-semibold break-words min-[380px]:text-sm sm:text-base',
-          danger && value > 0 ? 'text-danger' : success ? 'text-success' : 'text-text-primary',
+          value > 0 ? STATUS_TEXT_CLASS[status] : 'text-text-primary',
         )}
       >
         {formatCurrency(value)}

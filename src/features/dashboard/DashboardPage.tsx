@@ -13,6 +13,7 @@ import { MonthlyChart, type MonthlyPoint } from '@/components/charts/MonthlyChar
 import { monthQueryString, useMonthParam } from '@/hooks/useMonthParam'
 import { formatCurrency, todayISO } from '@/lib/format'
 import { useLoansQuery } from '@/features/loans/api/useLoans'
+import { usePaymentsQuery } from '@/features/loans/api/usePayments'
 import { LoanList } from '@/features/loans/LoanList'
 import { useLoanForm } from '@/features/loans/loanFormContext'
 import { getLoanStatus, sortLoans, summarizeLoans } from '@/features/loans/status'
@@ -28,14 +29,21 @@ export function DashboardPage() {
   // Uma consulta cobre o mês escolhido + os 5 anteriores (para o gráfico).
   const chartStart = useMemo(() => startOfMonth(subMonths(month, CHART_MONTHS - 1)), [month])
   const range = getMonthRange(month)
-  const { data: periodLoans, isLoading } = useLoansQuery({ from: format(chartStart, 'yyyy-MM-dd'), to: range.to })
+  const { data: periodLoans, isLoading: loadingLoans } = useLoansQuery({ from: format(chartStart, 'yyyy-MM-dd'), to: range.to })
   const { data: overdueLoans, isLoading: loadingOverdue } = useLoansQuery({ overdueOnly: true })
+  // Juros pagos (o empréstimo foi para o mês seguinte): contam como recebido/lucro no mês em que venciam.
+  const { data: periodPayments, isLoading: loadingPayments } = usePaymentsQuery({ from: format(chartStart, 'yyyy-MM-dd'), to: range.to })
 
   const monthLoans = useMemo(
     () => (periodLoans ?? []).filter((l) => l.due_date >= range.from && l.due_date <= range.to),
     [periodLoans, range.from, range.to],
   )
-  const totals = useMemo(() => summarizeLoans(monthLoans, today), [monthLoans, today])
+  const isLoading = loadingLoans || loadingPayments
+  const monthPayments = useMemo(
+    () => (periodPayments ?? []).filter((p) => p.due_date >= range.from && p.due_date <= range.to),
+    [periodPayments, range.from, range.to],
+  )
+  const totals = useMemo(() => summarizeLoans(monthLoans, today, monthPayments), [monthLoans, today, monthPayments])
   const overdueTotals = useMemo(() => summarizeLoans(overdueLoans ?? [], today), [overdueLoans, today])
 
   const toReceive = useMemo(
@@ -49,10 +57,11 @@ export function DashboardPage() {
       const m = addMonths(chartStart, i)
       const key = format(m, 'yyyy-MM')
       const loans = (periodLoans ?? []).filter((l) => l.due_date.startsWith(key))
-      const s = summarizeLoans(loans, today)
+      const payments = (periodPayments ?? []).filter((p) => p.due_date.startsWith(key))
+      const s = summarizeLoans(loans, today, payments)
       return { label: format(m, 'MMM', { locale: ptBR }), previsto: s.expected, recebido: s.received }
     })
-  }, [periodLoans, chartStart, today])
+  }, [periodLoans, periodPayments, chartStart, today])
 
   const progress = totals.expected > 0 ? Math.round((totals.received / totals.expected) * 100) : 0
   const monthLink = `/emprestimos${monthQueryString(month)}`
@@ -110,7 +119,7 @@ export function DashboardPage() {
           value={formatCurrency(totals.profit)}
           icon="tabler:trending-up"
           tone="gold"
-          hint="dos que já pagaram"
+          hint={totals.interestPaymentCount > 0 ? 'inclui juros pagos' : 'dos que já pagaram'}
           loading={isLoading}
         />
         <StatCard

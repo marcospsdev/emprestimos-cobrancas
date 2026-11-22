@@ -27,7 +27,7 @@ export async function fetchLoans(filters: LoanFilters = {}): Promise<Loan[]> {
 /** A pessoa escolhida não existe mais no banco (excluída, ou lista desatualizada na tela). */
 export class PersonNotFoundError extends Error {
   constructor() {
-    super('Essa pessoa não existe mais. Escolha a pessoa de novo.')
+    super('Esse cliente não existe mais. Escolha o cliente de novo.')
     this.name = 'PersonNotFoundError'
   }
 }

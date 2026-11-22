@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { Navigate, createBrowserRouter } from 'react-router'
+import { Navigate, createBrowserRouter, useParams } from 'react-router'
 import { AppLayout } from './AppLayout'
 import { RequireAuth, RedirectIfAuthed } from './RequireAuth'
 import { LoginPage } from '@/features/auth/LoginPage'
@@ -11,6 +11,11 @@ const PeopleListPage = lazy(() => import('@/features/people/PeopleListPage').the
 const PersonDetailPage = lazy(() =>
   import('@/features/people/PersonDetailPage').then((m) => ({ default: m.PersonDetailPage })),
 )
+
+function LegacyPersonRedirect() {
+  const { id } = useParams()
+  return <Navigate to={`/clientes/${id}`} replace />
+}
 
 export const router = createBrowserRouter([
   {
@@ -26,8 +31,11 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'emprestimos', element: <LoansListPage /> },
-          { path: 'pessoas', element: <PeopleListPage /> },
-          { path: 'pessoas/:id', element: <PersonDetailPage /> },
+          { path: 'clientes', element: <PeopleListPage /> },
+          { path: 'clientes/:id', element: <PersonDetailPage /> },
+          // Links antigos (/pessoas) continuam funcionando.
+          { path: 'pessoas', element: <Navigate to="/clientes" replace /> },
+          { path: 'pessoas/:id', element: <LegacyPersonRedirect /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },

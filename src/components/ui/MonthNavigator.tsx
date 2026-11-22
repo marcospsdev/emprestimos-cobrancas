@@ -37,7 +37,7 @@ export function MonthNavigator({ month, onChange, className }: MonthNavigatorPro
           <button
             type="button"
             onClick={() => onChange(startOfMonth(new Date()))}
-            className="cursor-pointer text-xs font-medium text-brand-400 hover:underline"
+            className="-my-1 cursor-pointer px-2 py-1.5 text-sm font-medium text-brand-400 hover:underline sm:py-0.5 sm:text-xs"
           >
             Voltar para o mês atual
           </button>

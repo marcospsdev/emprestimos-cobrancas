@@ -9,5 +9,5 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Resumo', to: '/', icon: 'tabler:layout-dashboard', keepsMonth: true },
   { label: 'Empréstimos', to: '/emprestimos', icon: 'tabler:coins', keepsMonth: true },
-  { label: 'Pessoas', to: '/pessoas', icon: 'tabler:users' },
+  { label: 'Clientes', to: '/clientes', icon: 'tabler:users' },
 ]

@@ -12,7 +12,11 @@ export function useLoansQuery(filters: LoanFilters = {}, options: { enabled?: bo
 
 function useInvalidateLoans() {
   const queryClient = useQueryClient()
-  return () => queryClient.invalidateQueries({ queryKey: ['loans'] })
+  // Os pagamentos de juros trazem dados do empréstimo embutidos (quitado, valores).
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['loans'] })
+    queryClient.invalidateQueries({ queryKey: ['payments'] })
+  }
 }
 
 export function useCreateLoan() {

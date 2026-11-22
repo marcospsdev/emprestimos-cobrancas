@@ -6,7 +6,8 @@ import { Icon } from '@iconify/react'
 import { Lightfall } from '@/components/effects/Lightfall'
 import { GlassSurface } from '@/components/effects/GlassSurface'
 import { BrandMark } from '@/components/shared/BrandMark'
-import { DeveloperCredit } from '@/components/shared/DeveloperCredit'
+import { ThemeToggleButton } from '@/components/shared/ThemeToggle'
+import { useTheme } from '@/lib/theme'
 import { Button } from '@/components/ui/Button'
 import { PasswordField } from '@/components/ui/form/PasswordField'
 import { useToast } from '@/components/ui/Toast'
@@ -14,6 +15,7 @@ import { useAuth } from '@/context/AuthContext'
 import { resetPasswordSchema, type ResetPasswordFormValues } from './schema'
 
 export function ResetPasswordPage() {
+  const { resolved: resolvedTheme } = useTheme()
   const { updatePassword } = useAuth()
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -44,7 +46,7 @@ export function ResetPasswordPage() {
       <div className="pointer-events-none absolute inset-0">
         <Lightfall
           colors={['#10b981', '#34d399', '#f59e0b']}
-          backgroundColor="#0b1f17"
+          backgroundColor={resolvedTheme === 'light' ? '#bbf7d0' : '#0b1f17'}
           speed={0.5}
           streakCount={3}
           density={0.6}
@@ -58,6 +60,7 @@ export function ResetPasswordPage() {
         />
       </div>
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+      <ThemeToggleButton className="absolute top-[calc(env(safe-area-inset-top)+1rem)] right-4 z-20" />
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
@@ -113,7 +116,6 @@ export function ResetPasswordPage() {
           )}
         </GlassSurface>
 
-        <DeveloperCredit className="mt-6 text-center" />
       </div>
     </div>
   )

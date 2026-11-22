@@ -60,13 +60,13 @@ export function PeopleListPage() {
     const loanCount = totalsByPerson.get(person.id)?.count ?? 0
     if (loanCount > 0) {
       showToast(
-        `${person.name} tem ${loanCount} empréstimo(s) cadastrado(s). Exclua os empréstimos antes de excluir a pessoa.`,
+        `${person.name} tem ${loanCount} empréstimo(s) cadastrado(s). Exclua os empréstimos antes de excluir o cliente.`,
         'warning',
       )
       return
     }
     const ok = await confirm({
-      title: 'Excluir pessoa',
+      title: 'Excluir cliente',
       description: `Excluir "${person.name}"? Essa ação não pode ser desfeita.`,
       confirmLabel: 'Excluir',
       variant: 'danger',
@@ -74,20 +74,21 @@ export function PeopleListPage() {
     if (!ok) return
     try {
       await deletePerson.mutateAsync(person.id)
-      showToast(`${person.name} excluído(a).`, 'success')
+      showToast(`${person.name} excluído.`, 'success')
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Erro ao excluir pessoa.', 'error')
+      showToast(error instanceof Error ? error.message : 'Erro ao excluir cliente.', 'error')
     }
   }
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Pessoas"
+        title="Clientes"
         actions={
-          <Button onClick={openNew} variant="secondary" className="hidden sm:inline-flex">
-            <Icon icon="tabler:user-plus" className="size-4.5" />
-            Nova pessoa
+          // Ação principal da tela: primary, com texto também no celular (como "Novo empréstimo").
+          <Button onClick={openNew} className="w-full sm:w-auto">
+            <Icon icon="tabler:user-plus" className="size-5 sm:size-4.5" />
+            Novo cliente
           </Button>
         }
       />
@@ -104,9 +105,6 @@ export function PeopleListPage() {
             className="h-12 w-full rounded-xl border border-border bg-surface pr-3 pl-10 text-base text-text-primary placeholder:text-text-muted outline-none focus:border-brand-500 sm:h-10 sm:max-w-sm sm:text-sm"
           />
         </div>
-        <Button variant="secondary" size="icon" onClick={openNew} aria-label="Nova pessoa" className="sm:hidden">
-          <Icon icon="tabler:user-plus" className="size-5" />
-        </Button>
       </div>
 
       {isLoading ? (
@@ -118,8 +116,8 @@ export function PeopleListPage() {
       ) : visible.length === 0 ? (
         <EmptyState
           icon="tabler:users"
-          title={search ? 'Ninguém com esse nome' : 'Nenhuma pessoa cadastrada'}
-          description={search ? undefined : 'Você também pode cadastrar a pessoa direto ao criar um empréstimo.'}
+          title={search ? 'Ninguém com esse nome' : 'Nenhum cliente cadastrado'}
+          description={search ? undefined : 'Você também pode cadastrar o cliente direto ao criar um empréstimo.'}
         />
       ) : (
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
@@ -129,7 +127,7 @@ export function PeopleListPage() {
             return (
               <li key={person.id} className="flex items-center pr-2">
                 <Link
-                  to={`/pessoas/${person.id}`}
+                  to={`/clientes/${person.id}`}
                   className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 transition-colors active:bg-surface-hover"
                 >
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-sm font-semibold text-brand-300">
@@ -140,7 +138,7 @@ export function PeopleListPage() {
                     <p className="truncate text-sm text-text-muted">
                       {open > 0 ? (
                         <>
-                          Deve {formatCurrency(open)}
+                          <span className="font-medium text-info">Deve {formatCurrency(open)}</span>
                           {t && t.overdueCount > 0 && <span className="text-danger"> · {t.overdueCount} atrasado(s)</span>}
                         </>
                       ) : (
@@ -151,8 +149,12 @@ export function PeopleListPage() {
                 </Link>
                 <div className="flex shrink-0 items-center">
                   <WhatsAppButton phone={person.phone} />
-                  <RowAction icon="tabler:pencil" label={`Editar ${person.name}`} onClick={() => openEdit(person)} />
-                  <RowAction icon="tabler:trash" label={`Excluir ${person.name}`} tone="danger" onClick={() => remove(person)} />
+                  {/* No celular: editar/excluir ficam na página do cliente (tocar na linha). */}
+                  <span className="hidden items-center sm:flex">
+                    <RowAction icon="tabler:pencil" label={`Editar ${person.name}`} onClick={() => openEdit(person)} />
+                    <RowAction icon="tabler:trash" label={`Excluir ${person.name}`} tone="danger" onClick={() => remove(person)} />
+                  </span>
+                  <Icon icon="tabler:chevron-right" className="size-5 text-text-muted sm:hidden" aria-hidden />
                 </div>
               </li>
             )

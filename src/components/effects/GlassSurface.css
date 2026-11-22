@@ -60,3 +60,17 @@
     z-index: -1;
   }
 }
+
+/* Tema claro: vidro branco com aro verde sutil. */
+:root[data-theme='light'] .glass-surface--svg {
+  background: rgb(255 255 255 / var(--glass-frost, 0.6));
+  box-shadow:
+    0 0 0 1px rgb(16 185 129 / 0.18) inset,
+    0 12px 32px -16px rgb(16 24 40 / 0.25);
+}
+
+:root[data-theme='light'] .glass-surface--fallback {
+  background: rgb(255 255 255 / 0.75);
+  border-color: rgb(16 185 129 / 0.2);
+  box-shadow: 0 12px 32px -16px rgb(16 24 40 / 0.25);
+}

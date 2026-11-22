@@ -32,7 +32,7 @@ export function WhatsAppButton({ phone, message, className, label }: WhatsAppBut
         'flex shrink-0 items-center justify-center text-success transition-colors',
         label
           ? 'h-12 gap-2 rounded-xl border border-success/30 bg-success-muted px-4 text-base font-medium hover:bg-success/20 sm:h-10 sm:rounded-lg sm:text-sm'
-          : 'size-10 rounded-xl hover:bg-success-muted active:bg-success-muted sm:size-9 sm:rounded-lg',
+          : 'size-11 rounded-xl hover:bg-success-muted active:bg-success-muted sm:size-9 sm:rounded-lg',
         className,
       )}
     >

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { addDays, format, parseISO } from 'date-fns'
+import { addDays, addMonths, format, parseISO } from 'date-fns'
 import { Icon } from '@iconify/react'
 import { Button } from '@/components/ui/Button'
 import {
@@ -15,13 +15,15 @@ import {
   DialogTitle,
 } from '@/components/ui/Dialog'
 import { MoneyField } from '@/components/ui/form/MoneyField'
+import { PercentField } from '@/components/ui/form/PercentField'
 import { DateField } from '@/components/ui/form/DateField'
 import { TextField } from '@/components/ui/form/TextField'
 import { TextareaField } from '@/components/ui/form/TextareaField'
 import { ComboboxField } from '@/components/ui/form/ComboboxField'
+import { CheckboxField } from '@/components/ui/form/CheckboxField'
 import { useToast } from '@/components/ui/Toast'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
-import { cn } from '@/lib/cn'
+import { useDiscardGuard } from '@/hooks/useDiscardGuard'
 import { formatCurrency, todayISO } from '@/lib/format'
 import { maskPhone } from '@/lib/whatsapp'
 import { useCreatePerson, usePeopleQuery } from '@/features/people/api/usePeople'
@@ -30,6 +32,7 @@ import { emptyLoanValues, loanSchema, loanToFormValues, type LoanFormValues } fr
 import { useCreateLoan, useDeleteLoan, useUpdateLoan } from './api/useLoans'
 import { PersonNotFoundError } from './api/loans'
 import { PaymentMethodPicker } from './PaymentMethodPicker'
+import { computeAmountToReceive, loanLabel } from './status'
 
 interface LoanFormModalProps {
   open: boolean
@@ -39,10 +42,11 @@ interface LoanFormModalProps {
   defaultPersonId?: string
 }
 
-const DUE_SHORTCUTS = [
+// O combinado mais comum é mensal (ex.: emprestou dia 5, paga dia 5 do mês seguinte).
+const DUE_SHORTCUTS: { label: string; days?: number; months?: number }[] = [
   { label: '7 dias', days: 7 },
   { label: '15 dias', days: 15 },
-  { label: '30 dias', days: 30 },
+  { label: '1 mês', months: 1 },
 ]
 
 export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: LoanFormModalProps) {
@@ -56,21 +60,20 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
   const updateLoan = useUpdateLoan()
   const deleteLoan = useDeleteLoan()
 
-  // Enquanto a pessoa não mexer no "valor a receber", ele acompanha o valor
-  // emprestado (empréstimo sem juros é o caso mais comum).
-  const toReceiveTouched = useRef(false)
-
   const {
     control,
     register,
     handleSubmit,
     reset,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<LoanFormValues>({
     resolver: zodResolver(loanSchema),
     defaultValues: emptyLoanValues(defaultPersonId),
   })
+
+  // X, clique fora, Esc, arrastar ou Cancelar com dados preenchidos: confirma o descarte.
+  const discard = useDiscardGuard({ dirty: isDirty, isEdit, busy: isSubmitting, onClose: () => onOpenChange(false) })
 
   // O modal fica montado o tempo todo; ao abrir, atualiza a lista de pessoas
   // para não oferecer alguém que já foi excluído.
@@ -80,13 +83,12 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
 
   useEffect(() => {
     if (!open) return
-    toReceiveTouched.current = isEdit
     reset(loan ? loanToFormValues(loan) : emptyLoanValues(defaultPersonId))
   }, [open, loan, isEdit, defaultPersonId, reset])
 
-  const [personMode, amountLent, amountToReceive, loanDate, isPaid] = useWatch({
+  const [personMode, amountLent, interestRate, loanDate, isPaid] = useWatch({
     control,
-    name: ['person_mode', 'amount_lent', 'amount_to_receive', 'loan_date', 'is_paid'],
+    name: ['person_mode', 'amount_lent', 'interest_rate', 'loan_date', 'is_paid'],
   })
 
   const personOptions = useMemo(
@@ -94,11 +96,12 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
     [people],
   )
 
-  const profit = (amountToReceive || 0) - (amountLent || 0)
+  const amountToReceive = computeAmountToReceive(amountLent, interestRate)
+  const profit = amountToReceive - (amountLent || 0)
 
-  const setDueIn = (days: number) => {
+  const setDueIn = ({ days = 0, months = 0 }: { days?: number; months?: number }) => {
     const base = loanDate ? parseISO(loanDate) : new Date()
-    setValue('due_date', format(addDays(base, days), 'yyyy-MM-dd'), { shouldValidate: true })
+    setValue('due_date', format(addMonths(addDays(base, days), months), 'yyyy-MM-dd'), { shouldValidate: true, shouldDirty: true })
   }
 
   const onSubmit = async (values: LoanFormValues) => {
@@ -122,29 +125,29 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
 
       const payload: LoanInput = {
         person_id: personId,
-        title: values.title.trim(),
         description: values.description.trim() || null,
         amount_lent: values.amount_lent,
-        amount_to_receive: values.amount_to_receive,
+        interest_rate: values.interest_rate,
+        amount_to_receive: computeAmountToReceive(values.amount_lent, values.interest_rate),
         loan_date: values.loan_date,
         due_date: values.due_date,
         paid_at: values.is_paid ? values.paid_at : null,
         payment_method: values.is_paid ? values.payment_method || null : null,
       }
 
-      const title = payload.title
+      const label = personName ? `Empréstimo de ${personName}` : 'Empréstimo'
       if (isEdit) {
         await updateLoan.mutateAsync({ id: loan.id, payload })
         // Mudou o pagamento pela edição? Diz isso, em vez de só "atualizado".
-        if (payload.paid_at && !loan.paid_at) showToast(`"${title}" marcado como pago.`, 'success')
-        else if (!payload.paid_at && loan.paid_at) showToast(`"${title}" voltou para não pago.`, 'info')
-        else showToast(`"${title}" atualizado.`, 'success')
+        if (payload.paid_at && !loan.paid_at) showToast(`${label} marcado como pago.`, 'success')
+        else if (!payload.paid_at && loan.paid_at) showToast(`${label} voltou para não pago.`, 'info')
+        else showToast(`${label} atualizado.`, 'success')
       } else {
         await createLoan.mutateAsync(payload)
         showToast(
           createdPerson
-            ? `${personName} cadastrado(a) e empréstimo "${title}" criado.`
-            : `Empréstimo "${title}" cadastrado${personName ? ` para ${personName}` : ''}.`,
+            ? `Cliente ${personName} cadastrado e empréstimo criado.`
+            : `Empréstimo cadastrado${personName ? ` para ${personName}` : ''}.`,
           'success',
         )
       }
@@ -163,14 +166,14 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
     if (!loan) return
     const ok = await confirm({
       title: 'Excluir empréstimo',
-      description: `Excluir "${loan.title}"? Essa ação não pode ser desfeita.`,
+      description: `Excluir o empréstimo de ${formatCurrency(loan.amount_to_receive)}${loan.person ? ` de ${loan.person.name}` : ''}? Essa ação não pode ser desfeita.`,
       confirmLabel: 'Excluir',
       variant: 'danger',
     })
     if (!ok) return
     try {
       await deleteLoan.mutateAsync(loan.id)
-      showToast(`"${loan.title}" excluído.`, 'success')
+      showToast(`${loanLabel(loan)} excluído.`, 'success')
       onOpenChange(false)
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao excluir empréstimo.', 'error')
@@ -178,12 +181,12 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={discard.onOpenChange}>
       <DialogContent size="md">
         <form onSubmit={handleSubmit(onSubmit, () => showToast('Confira os campos destacados em vermelho.', 'warning'))} className="flex min-h-0 flex-1 flex-col" noValidate>
           <DialogHeader>
             <DialogTitle>{isEdit ? 'Editar empréstimo' : 'Novo empréstimo'}</DialogTitle>
-            {!isEdit && <DialogDescription>Para quem, quanto e quando vai receber.</DialogDescription>}
+            {!isEdit && <DialogDescription>Cliente, valor, juros e data de pagamento.</DialogDescription>}
           </DialogHeader>
 
           <DialogBody>
@@ -195,19 +198,19 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                   name="person_id"
                   render={({ field }) => (
                     <ComboboxField
-                      label="Pessoa"
+                      label="Cliente"
                       required
-                      placeholder="Escolher pessoa"
+                      placeholder="Escolher cliente"
                       searchPlaceholder="Buscar pelo nome..."
                       emptyMessage="Ninguém com esse nome"
                       options={personOptions}
                       value={field.value || null}
                       onChange={(v) => field.onChange(v ?? '')}
                       error={errors.person_id?.message}
-                      createNewLabel="Cadastrar nova pessoa"
+                      createNewLabel="Cadastrar novo cliente"
                       onCreateNew={(typed) => {
-                        setValue('person_mode', 'new')
-                        setValue('new_person_name', typed)
+                        setValue('person_mode', 'new', { shouldDirty: true })
+                        setValue('new_person_name', typed, { shouldDirty: true })
                       }}
                     />
                   )}
@@ -217,7 +220,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                   <div className="flex items-center justify-between gap-2">
                     <p className="flex items-center gap-2 text-sm font-semibold text-brand-300">
                       <Icon icon="tabler:user-plus" className="size-4.5" />
-                      Nova pessoa
+                      Novo cliente
                     </p>
                     <button
                       type="button"
@@ -257,19 +260,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                 </div>
               )}
 
-              {/* ---- Título ---- */}
-              <TextField
-                label="Título"
-                required
-                placeholder="Ex.: Conserto do carro"
-                autoComplete="off"
-                autoCapitalize="sentences"
-                enterKeyHint="next"
-                error={errors.title?.message}
-                {...register('title')}
-              />
-
-              {/* ---- Valores ---- */}
+              {/* ---- Valores: emprestado + juros (%) → total a receber ---- */}
               <div>
                 <div className="grid grid-cols-2 gap-3">
                   <Controller
@@ -277,53 +268,67 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                     name="amount_lent"
                     render={({ field }) => (
                       <MoneyField
-                        label="Emprestei"
+                        label="Valor emprestado"
                         required
                         value={field.value || null}
-                        onValueChange={(v) => {
-                          field.onChange(v ?? 0)
-                          if (!toReceiveTouched.current) setValue('amount_to_receive', v ?? 0)
-                        }}
+                        onValueChange={(v) => field.onChange(v ?? 0)}
                         error={errors.amount_lent?.message}
                       />
                     )}
                   />
                   <Controller
                     control={control}
-                    name="amount_to_receive"
+                    name="interest_rate"
                     render={({ field }) => (
-                      <MoneyField
-                        label="Vou receber"
-                        required
+                      <PercentField
+                        label="Juros"
                         value={field.value || null}
-                        onValueChange={(v) => {
-                          toReceiveTouched.current = true
-                          field.onChange(v ?? 0)
-                        }}
-                        error={errors.amount_to_receive?.message}
+                        onValueChange={(v) => field.onChange(v ?? 0)}
+                        error={errors.interest_rate?.message}
                       />
                     )}
                   />
                 </div>
-                {profit !== 0 && amountLent > 0 && amountToReceive > 0 && (
-                  <p className={cn('mt-2 text-sm', profit > 0 ? 'text-gold-400' : 'text-text-muted')}>
-                    {profit > 0 ? `Lucro de ${formatCurrency(profit)}` : `Vai receber ${formatCurrency(-profit)} a menos`}
-                  </p>
+                {amountLent > 0 && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface-elevated/50 px-4 py-3">
+                    <div>
+                      <p className="text-xs text-text-muted">Vai receber</p>
+                      <p className="text-lg font-semibold text-text-primary">{formatCurrency(amountToReceive)}</p>
+                    </div>
+                    {profit > 0 && (
+                      <div className="text-right">
+                        <p className="text-xs text-text-muted">Lucro</p>
+                        <p className="text-base font-semibold text-gold-400">{formatCurrency(profit)}</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
               {/* ---- Datas ---- */}
               <div className="flex flex-col gap-4">
-                <DateField label="Data do empréstimo" required error={errors.loan_date?.message} {...register('loan_date')} />
-                <DateField label="Pagar até" required error={errors.due_date?.message} {...register('due_date')} />
+                <Controller
+                  control={control}
+                  name="loan_date"
+                  render={({ field }) => (
+                    <DateField label="Data do empréstimo" required error={errors.loan_date?.message} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="due_date"
+                  render={({ field }) => (
+                    <DateField label="Data do pagamento" required error={errors.due_date?.message} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+                  )}
+                />
               </div>
               <div className="-mt-2 flex flex-wrap items-center gap-2">
                 <span className="text-xs text-text-muted">Pagar em:</span>
                 {DUE_SHORTCUTS.map((s) => (
                   <button
-                    key={s.days}
+                    key={s.label}
                     type="button"
-                    onClick={() => setDueIn(s.days)}
+                    onClick={() => setDueIn(s)}
                     className="h-9 cursor-pointer rounded-lg border border-border-strong bg-surface-elevated px-3 text-sm text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
                   >
                     {s.label}
@@ -332,9 +337,11 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
               </div>
 
               {/* ---- Descrição ---- */}
+              {/* Sem placeholder: um exemplo dentro do campo pareceria informação real do
+                  empréstimo. O exemplo aparece só como dica, e só no cadastro novo. */}
               <TextareaField
                 label="Descrição (opcional)"
-                placeholder="Ex.: vai pagar em 3 vezes de R$ 200, dia 10 de cada mês"
+                hint={isEdit ? undefined : 'Exemplo: vai pagar em 3 vezes de R$ 200, todo dia 10.'}
                 autoCapitalize="sentences"
                 rows={5}
                 {...register('description')}
@@ -342,28 +349,31 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
 
               {/* ---- Pagamento (só na edição; no cadastro usa-se o check da lista) ---- */}
               {isEdit && (
-                <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-elevated/50 p-4">
+                <div className="flex flex-col gap-4">
                   <Controller
                     control={control}
                     name="is_paid"
                     render={({ field }) => (
-                      <label className="flex min-h-11 cursor-pointer items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={(e) => {
-                            field.onChange(e.target.checked)
-                            if (e.target.checked) setValue('paid_at', loan?.paid_at ?? todayISO())
-                          }}
-                          className="size-6 shrink-0 cursor-pointer accent-emerald-500"
-                        />
-                        <span className="text-base font-medium text-text-primary sm:text-sm">Já foi pago</span>
-                      </label>
+                      <CheckboxField
+                        label="Já foi pago"
+                        description={field.value ? 'Informe quando e como recebeu.' : 'Marque quando o cliente pagar.'}
+                        checked={field.value}
+                        onChange={(checked) => {
+                          field.onChange(checked)
+                          if (checked) setValue('paid_at', loan?.paid_at ?? todayISO())
+                        }}
+                      />
                     )}
                   />
                   {isPaid && (
                     <>
-                      <DateField label="Pago em" required error={errors.paid_at?.message} {...register('paid_at')} />
+                      <Controller
+                  control={control}
+                  name="paid_at"
+                  render={({ field }) => (
+                    <DateField label="Pago em" required error={errors.paid_at?.message} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+                  )}
+                />
                       <Controller
                         control={control}
                         name="payment_method"
@@ -384,7 +394,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
           </DialogBody>
 
           <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={discard.requestClose}>
               Cancelar
             </Button>
             <Button type="submit" loading={isSubmitting}>

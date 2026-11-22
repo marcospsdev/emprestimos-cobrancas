@@ -6,6 +6,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTi
 import { TextField } from '@/components/ui/form/TextField'
 import { TextareaField } from '@/components/ui/form/TextareaField'
 import { useToast } from '@/components/ui/Toast'
+import { useDiscardGuard } from '@/hooks/useDiscardGuard'
 import { maskPhone } from '@/lib/whatsapp'
 import type { Person } from '@/types/database'
 import { emptyPersonValues, personSchema, type PersonFormValues } from './schema'
@@ -28,11 +29,14 @@ export function PersonFormModal({ open, onOpenChange, person }: PersonFormModalP
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<PersonFormValues>({
     resolver: zodResolver(personSchema),
     defaultValues: emptyPersonValues,
   })
+
+  // X, clique fora, Esc, arrastar ou Cancelar com dados preenchidos: confirma o descarte.
+  const discard = useDiscardGuard({ dirty: isDirty, isEdit, busy: isSubmitting, onClose: () => onOpenChange(false) })
 
   useEffect(() => {
     if (!open) return
@@ -48,23 +52,23 @@ export function PersonFormModal({ open, onOpenChange, person }: PersonFormModalP
     try {
       if (isEdit) {
         await updateMutation.mutateAsync({ id: person.id, payload })
-        showToast(`${payload.name} atualizado(a).`, 'success')
+        showToast(`${payload.name} atualizado.`, 'success')
       } else {
         await createMutation.mutateAsync(payload)
-        showToast(`${payload.name} cadastrado(a).`, 'success')
+        showToast(`${payload.name} cadastrado.`, 'success')
       }
       onOpenChange(false)
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Erro ao salvar pessoa.', 'error')
+      showToast(error instanceof Error ? error.message : 'Erro ao salvar cliente.', 'error')
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={discard.onOpenChange}>
       <DialogContent size="sm">
         <form onSubmit={handleSubmit(onSubmit, () => showToast('Confira os campos destacados em vermelho.', 'warning'))} className="flex min-h-0 flex-1 flex-col" noValidate>
           <DialogHeader>
-            <DialogTitle>{isEdit ? 'Editar pessoa' : 'Nova pessoa'}</DialogTitle>
+            <DialogTitle>{isEdit ? 'Editar cliente' : 'Novo cliente'}</DialogTitle>
           </DialogHeader>
           <DialogBody>
             <div className="flex flex-col gap-4">
@@ -98,7 +102,7 @@ export function PersonFormModal({ open, onOpenChange, person }: PersonFormModalP
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={discard.requestClose}>
               Cancelar
             </Button>
             <Button type="submit" loading={isSubmitting}>

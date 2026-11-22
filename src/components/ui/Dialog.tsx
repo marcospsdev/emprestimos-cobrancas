@@ -47,16 +47,15 @@ export function DialogContent({ className, size = 'md', children, onOpenAutoFocu
   const handlePointerUp = () => {
     if (!dragInfo.current.active) return
     dragInfo.current.active = false
-    if (dragY > DRAG_DISMISS_THRESHOLD) {
-      closeRef.current?.click()
-    } else {
-      setDragY(0)
-    }
+    // Sempre volta ao lugar: se o fechamento for cancelado (ex.: confirmação de
+    // descarte), o sheet não fica parado no meio do caminho.
+    if (dragY > DRAG_DISMISS_THRESHOLD) closeRef.current?.click()
+    setDragY(0)
   }
 
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=open]:animate-fade-in" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay backdrop-blur-sm data-[state=open]:animate-fade-in" />
       <DialogPrimitive.Content
         ref={contentRef}
         // Por padrão o Radix foca o primeiro campo do formulário ao abrir — no
@@ -94,9 +93,9 @@ export function DialogContent({ className, size = 'md', children, onOpenAutoFocu
 
         <DialogPrimitive.Close
           ref={closeRef}
-          className="absolute right-4 top-7 cursor-pointer rounded-md p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:top-4"
+          className="absolute top-5 right-3 flex size-11 cursor-pointer items-center justify-center rounded-xl text-text-muted sm:top-3 sm:right-3 sm:size-8 sm:rounded-md transition-colors hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:top-4"
         >
-          <Icon icon="tabler:x" className="size-4.5" />
+          <Icon icon="tabler:x" className="size-5 sm:size-4.5" />
           <span className="sr-only">Fechar</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
