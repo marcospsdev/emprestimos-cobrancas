@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn'
 import { useLoanForm } from '@/features/loans/loanFormContext'
 import { AccountSheet } from '@/features/auth/AccountSheet'
 import { useNavTarget } from './useNavTarget'
+import { usePushState } from '@/lib/push'
 
 /**
  * Navegação principal no celular, no alcance do polegar. Simétrica:
@@ -17,6 +18,9 @@ export function BottomNav() {
   const { openNewLoan } = useLoanForm()
   const target = useNavTarget()
   const [accountOpen, setAccountOpen] = useState(false)
+  // Bolinha amarela em "Conta" quando os avisos não estão funcionando neste aparelho.
+  const pushState = usePushState()
+  const pushAttention = pushState === 'off' || pushState === 'denied' || pushState === 'ios-install' || pushState === 'unsupported'
   const [dashboard, loans, people] = NAV_ITEMS
 
   const item = (nav: (typeof NAV_ITEMS)[number]) => (
@@ -55,7 +59,7 @@ export function BottomNav() {
             aria-haspopup="dialog"
             className="flex h-16 min-w-0 flex-1 cursor-pointer"
           >
-            <NavSlot icon="tabler:user-circle" label="Conta" active={accountOpen} />
+            <NavSlot icon="tabler:user-circle" label="Conta" active={accountOpen} attention={pushAttention} />
           </button>
         </div>
       </nav>
@@ -64,7 +68,7 @@ export function BottomNav() {
   )
 }
 
-function NavSlot({ icon, label, active }: { icon: string; label: ReactNode; active: boolean }) {
+function NavSlot({ icon, label, active, attention }: { icon: string; label: ReactNode; active: boolean; attention?: boolean }) {
   return (
     <span
       className={cn(
@@ -74,11 +78,14 @@ function NavSlot({ icon, label, active }: { icon: string; label: ReactNode; acti
     >
       <span
         className={cn(
-          'flex h-8 w-14 items-center justify-center rounded-full transition-colors',
+          'relative flex h-8 w-14 items-center justify-center rounded-full transition-colors',
           active && 'bg-brand-500/15',
         )}
       >
         <Icon icon={icon} className="size-6" />
+        {attention && (
+          <span className="absolute top-0.5 right-3.5 size-2.5 rounded-full bg-warning ring-2 ring-surface" aria-label="Avisos desligados" />
+        )}
       </span>
       <span className={cn('max-w-full truncate tracking-tight', active && 'font-semibold')}>{label}</span>
     </span>

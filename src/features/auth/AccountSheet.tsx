@@ -5,6 +5,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/cn'
+import { PushSettings } from '@/components/shared/PushStatus'
 import { ChangePasswordDialog } from './ChangePasswordDialog'
 
 interface AccountSheetProps {
@@ -49,6 +50,9 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
             <DialogDescription className="truncate">{user?.email}</DialogDescription>
           </DialogHeader>
           <DialogBody className="pb-6">
+            <p className="mb-2 text-sm font-medium text-text-secondary">Avisos de vencimento</p>
+            <PushSettings />
+            <p className="mt-5 mb-2 text-sm font-medium text-text-secondary">Conta</p>
             <div className="flex flex-col gap-2">
               <SheetButton icon="tabler:key" label="Alterar senha" onClick={openChangePassword} />
               <SheetButton icon="tabler:logout" label="Sair da conta" onClick={handleSignOut} danger />

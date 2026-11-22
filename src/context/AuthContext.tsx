@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { forgetDeviceOnSignOut } from '@/lib/push'
 
 interface AuthContextValue {
   session: Session | null
@@ -48,6 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    // Antes de sair: este aparelho para de receber os avisos desta conta.
+    await forgetDeviceOnSignOut().catch(() => {})
     setSession(null)
     await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
   }, [])

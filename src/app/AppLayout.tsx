@@ -1,12 +1,24 @@
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Outlet } from 'react-router'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileHeader } from '@/components/layout/MobileHeader'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { PageLoader } from '@/components/ui/PageLoader'
 import { LoanFormProvider } from '@/features/loans/LoanFormProvider'
+import { refreshPushState } from '@/lib/push'
 
 export function AppLayout() {
+  // Situação dos avisos: ao abrir e ao voltar para o app (a pessoa pode ter
+  // liberado as notificações nas configurações do celular nesse meio tempo).
+  useEffect(() => {
+    void refreshPushState()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshPushState()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
+
   return (
     <LoanFormProvider>
       <div className="flex min-h-dvh flex-col bg-background lg:pl-64">

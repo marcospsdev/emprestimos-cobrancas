@@ -10,6 +10,7 @@ import { MonthNavigator, formatMonthLabel, getMonthRange } from '@/components/ui
 import { Skeleton } from '@/components/ui/Skeleton'
 import { StatCard } from '@/components/ui/StatCard'
 import { MonthlyChart, type MonthlyPoint } from '@/components/charts/MonthlyChart'
+import { PushStatusBanner } from '@/components/shared/PushStatus'
 import { monthQueryString, useMonthParam } from '@/hooks/useMonthParam'
 import { formatCurrency, todayISO } from '@/lib/format'
 import { useLoansQuery } from '@/features/loans/api/useLoans'
@@ -75,6 +76,8 @@ export function DashboardPage() {
           Novo empréstimo
         </Button>
       </div>
+
+      <PushStatusBanner />
 
       <MonthNavigator month={month} onChange={setMonth} />
 
