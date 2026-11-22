@@ -33,8 +33,8 @@ const COPY: Record<Exclude<PushState, 'loading'>, { title: string; text: string;
     icon: 'tabler:bell-off',
   },
   'not-configured': {
-    title: 'Avisos indisponíveis',
-    text: 'Os avisos não foram configurados nesta instalação do sistema.',
+    title: 'Avisos de vencimento indisponíveis',
+    text: 'Você não vai receber aviso dos vencimentos: os avisos ainda não foram configurados nesta versão do sistema. Fale com quem administra o sistema.',
     icon: 'tabler:bell-off',
   },
 }
@@ -65,7 +65,9 @@ function useEnable() {
 export function PushStatusBanner({ className }: { className?: string }) {
   const state = usePushState()
   const { enable, busy } = useEnable()
-  if (state === 'loading' || state === 'on' || state === 'not-configured') return null
+  // Qualquer situação em que os avisos NÃO funcionam aparece aqui (regra do produto:
+  // o usuário sempre precisa saber por que não está recebendo).
+  if (state === 'loading' || state === 'on') return null
   const copy = COPY[state]
 
   return (

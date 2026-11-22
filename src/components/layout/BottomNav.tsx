@@ -20,7 +20,7 @@ export function BottomNav() {
   const [accountOpen, setAccountOpen] = useState(false)
   // Bolinha amarela em "Conta" quando os avisos não estão funcionando neste aparelho.
   const pushState = usePushState()
-  const pushAttention = pushState === 'off' || pushState === 'denied' || pushState === 'ios-install' || pushState === 'unsupported'
+  const pushAttention = pushState !== 'on' && pushState !== 'loading'
   const [dashboard, loans, people] = NAV_ITEMS
 
   const item = (nav: (typeof NAV_ITEMS)[number]) => (

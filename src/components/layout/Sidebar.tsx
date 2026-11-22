@@ -9,12 +9,16 @@ import { NAV_ITEMS } from '@/constants/nav'
 import { cn } from '@/lib/cn'
 import { UserMenu } from './UserMenu'
 import { useNavTarget } from './useNavTarget'
+import { usePushState } from '@/lib/push'
 
 /** Menu lateral — só no desktop (lg+). No celular a navegação é a BottomNav. */
 export function Sidebar() {
   const { user } = useAuth()
   const { openNewLoan } = useLoanForm()
   const target = useNavTarget()
+  // Avisos não funcionando neste aparelho: destaque amarelo na conta (como no celular).
+  const pushState = usePushState()
+  const pushAttention = pushState !== 'on' && pushState !== 'loading'
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-surface lg:flex">
@@ -62,10 +66,21 @@ export function Sidebar() {
               type="button"
               className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface-hover"
             >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-brand-400">
+              <div className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-brand-400">
                 <Icon icon="tabler:user" className="size-4.5" />
+                {pushAttention && (
+                  <span className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-warning ring-2 ring-surface" aria-hidden />
+                )}
               </div>
-              <p className="min-w-0 flex-1 truncate text-sm font-medium text-text-primary">{user?.email}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-text-primary">{user?.email}</p>
+                {pushAttention && (
+                  <p className="flex items-center gap-1 text-xs font-medium text-warning">
+                    <Icon icon="tabler:bell-off" className="size-3.5" />
+                    Avisos desligados
+                  </p>
+                )}
+              </div>
               <Icon icon="tabler:selector" className="size-4 shrink-0 text-text-muted" />
             </button>
           }
