@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { Icon } from '@iconify/react'
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
@@ -22,6 +23,12 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   const confirm = useConfirm()
   const { showToast } = useToast()
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const navigate = useNavigate()
+
+  const openStorage = () => {
+    onOpenChange(false)
+    navigate('/armazenamento')
+  }
 
   const openChangePassword = () => {
     onOpenChange(false)
@@ -54,6 +61,7 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
             <PushSettings />
             <p className="mt-5 mb-2 text-sm font-medium text-text-secondary">Conta</p>
             <div className="flex flex-col gap-2">
+              <SheetButton icon="tabler:database" label="Armazenamento" onClick={openStorage} />
               <SheetButton icon="tabler:key" label="Alterar senha" onClick={openChangePassword} />
               <SheetButton icon="tabler:logout" label="Sair da conta" onClick={handleSignOut} danger />
             </div>
