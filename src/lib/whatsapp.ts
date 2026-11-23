@@ -1,4 +1,5 @@
 import { formatCurrency, formatDate } from './format'
+import { buildPixBlock, type PixInfo } from '@/features/settings/pix'
 
 export function onlyDigits(value: string | null | undefined): string {
   return (value ?? '').replace(/\D/g, '')
@@ -22,18 +23,21 @@ interface ChargeInfo {
   installment?: string
   dueDate: string
   overdue: boolean
+  /** Chave Pix do usuário: vai no fim da mensagem, se cadastrada. */
+  pix?: PixInfo | null
 }
 
 /** Mensagem de cobrança educada, pronta pra enviar — a pessoa só aperta "enviar". */
-export function buildChargeMessage({ personName, amount, interest, installment, dueDate, overdue }: ChargeInfo): string {
+export function buildChargeMessage({ personName, amount, interest, installment, dueDate, overdue, pix }: ChargeInfo): string {
   const firstName = personName.trim().split(/\s+/)[0] ?? personName
   const value = formatCurrency(amount)
   const date = formatDate(dueDate)
   const option = interest && interest > 0 ? ` (ou ${formatCurrency(interest)} se for pagar só os juros deste mês)` : ''
   const what = installment ? `da ${installment} do empréstimo, no valor de ${value}` : `do empréstimo no valor de ${value}${option}`
-  return overdue
+  const body = overdue
     ? `Olá, ${firstName}! Tudo bem? Passando para lembrar ${what}, que venceu em ${date}. Consegue me avisar quando vai conseguir pagar?`
     : `Olá, ${firstName}! Tudo bem? Passando para lembrar ${what}, com pagamento combinado para ${date}.`
+  return pix ? body + buildPixBlock(pix) : body
 }
 
 /** Formata enquanto digita: (11) 91234-5678 */

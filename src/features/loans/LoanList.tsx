@@ -9,6 +9,7 @@ import { WhatsAppButton } from '@/components/shared/WhatsAppButton'
 import { cn } from '@/lib/cn'
 import { formatCurrency, formatDate, todayISO } from '@/lib/format'
 import { buildChargeMessage } from '@/lib/whatsapp'
+import { usePixInfo } from '@/features/settings/api/useSettings'
 import type { Loan, LoanPayment, LoanStatus } from '@/types/database'
 import { useDeleteLoan, useUpdateLoan } from './api/useLoans'
 import { useLoanForm } from './loanFormContext'
@@ -55,6 +56,7 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
   const confirm = useConfirm()
   const { showToast } = useToast()
   const today = todayISO()
+  const pix = usePixInfo()
 
   const unmarkPaid = async (loan: Loan) => {
     const ok = await confirm({
@@ -209,6 +211,7 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
                           installment: parcelado ? installmentLabel(loan).toLowerCase() : undefined,
                           dueDate: loan.due_date,
                           overdue: status === 'atrasado',
+                          pix,
                         })}
                       />
                     )}

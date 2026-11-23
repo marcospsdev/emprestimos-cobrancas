@@ -16,12 +16,14 @@ import { SimpleDialog } from '@/components/ui/Dialog'
 import { PushSettings } from '@/components/shared/PushStatus'
 import { usePushState } from '@/lib/push'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { PixKeyDialog } from '@/features/settings/PixKeyDialog'
 
 /** Menu da conta (avisos / alterar senha / sair). O gatilho visual muda entre celular e desktop. */
 export function UserMenu({ trigger, side = 'bottom' }: { trigger: ReactNode; side?: 'top' | 'bottom' }) {
   const { user, signOut } = useAuth()
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const [pushOpen, setPushOpen] = useState(false)
+  const [pixOpen, setPixOpen] = useState(false)
   const pushState = usePushState()
   const pushOn = pushState === 'on'
   const pushAttention = !pushOn && pushState !== 'loading'
@@ -66,6 +68,10 @@ export function UserMenu({ trigger, side = 'bottom' }: { trigger: ReactNode; sid
               <span className="text-xs text-success">Ativados</span>
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem onSelect={() => setPixOpen(true)}>
+            <Icon icon="tabler:qrcode" className="size-4" />
+            Chave Pix para cobrança
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setChangePasswordOpen(true)}>
             <Icon icon="tabler:key" className="size-4" />
             Alterar senha
@@ -77,6 +83,7 @@ export function UserMenu({ trigger, side = 'bottom' }: { trigger: ReactNode; sid
         </DropdownMenuContent>
       </DropdownMenu>
       <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
+      <PixKeyDialog open={pixOpen} onOpenChange={setPixOpen} />
       <SimpleDialog open={pushOpen} onOpenChange={setPushOpen} title="Avisos de vencimento" size="sm">
         <PushSettings />
       </SimpleDialog>

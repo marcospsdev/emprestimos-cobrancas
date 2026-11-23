@@ -68,3 +68,15 @@ export interface LoanPayment {
   created_at: string
   loan?: Pick<Loan, 'id' | 'person_id' | 'amount_lent' | 'amount_to_receive' | 'interest_rate' | 'installments' | 'description' | 'paid_at' | 'person'> | null
 }
+
+/** Configurações do usuário (uma linha por conta). Hoje: a chave Pix da cobrança. */
+export interface UserSettings {
+  user_id: string
+  pix_key_type: 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria' | null
+  pix_key: string | null
+  pix_bank: string | null
+  pix_holder: string | null
+  updated_at: string
+}
+
+export type UserSettingsInput = Pick<UserSettings, 'pix_key_type' | 'pix_key' | 'pix_bank' | 'pix_holder'>

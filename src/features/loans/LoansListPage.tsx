@@ -10,7 +10,7 @@ import { useMonthParam } from '@/hooks/useMonthParam'
 import { cn } from '@/lib/cn'
 import { formatCurrency, formatDate, normalizeSearch, todayISO } from '@/lib/format'
 import type { ReportColumn } from '@/lib/reportColumn'
-import type { Loan, LoanStatus } from '@/types/database'
+import type { Loan, LoanPayment, LoanStatus } from '@/types/database'
 import { useLoansQuery } from './api/useLoans'
 import { usePaymentsQuery } from './api/usePayments'
 import { LoanList } from './LoanList'
@@ -34,17 +34,57 @@ type Filter = 'todos' | LoanStatus
 
 const FILTERS: Filter[] = ['todos', 'pendente', 'atrasado', 'pago']
 
-const EXPORT_COLUMNS: ReportColumn<Loan>[] = [
-  { header: 'Pagar até', accessor: (l) => formatDate(l.due_date) },
-  { header: 'Cliente', accessor: (l) => l.person?.name ?? '—' },
-  { header: 'Emprestado', accessor: (l) => formatCurrency(l.amount_lent), align: 'right' },
-  { header: 'Juros', accessor: (l) => formatInterestRate(l.interest_rate) || '0%', align: 'right' },
-  { header: 'A receber', accessor: (l) => formatCurrency(getLoanStatus(l) === 'pago' ? remainingAmount(l) : amountDueNow(l)), align: 'right' },
-  { header: 'Parcela', accessor: (l) => (isInstallmentLoan(l) ? `${Math.min(currentInstallment(l), l.installments)}/${l.installments}` : '') },
-  { header: 'Status', accessor: (l) => STATUS_LABEL[getLoanStatus(l)] },
-  { header: 'Pago em', accessor: (l) => formatDate(l.paid_at) },
-  { header: 'Forma', accessor: (l) => l.payment_method ?? '' },
-  { header: 'Descrição', accessor: (l) => l.description ?? '' },
+/** Uma linha do relatório: um empréstimo ou um pagamento que não quitou (só juros / parcela). */
+interface ExportRow {
+  dueDate: string
+  person: string
+  lent: number
+  interestRate: number
+  amount: number
+  installment: string
+  status: string
+  paidAt: string | null
+  method: string
+  description: string
+}
+
+const loanToExportRow = (l: Loan): ExportRow => ({
+  dueDate: l.due_date,
+  person: l.person?.name ?? '—',
+  lent: l.amount_lent,
+  interestRate: l.interest_rate,
+  amount: getLoanStatus(l) === 'pago' ? remainingAmount(l) : amountDueNow(l),
+  installment: isInstallmentLoan(l) ? `${Math.min(currentInstallment(l), l.installments)}/${l.installments}` : '',
+  status: STATUS_LABEL[getLoanStatus(l)],
+  paidAt: l.paid_at,
+  method: l.payment_method ?? '',
+  description: l.description ?? '',
+})
+
+const paymentToExportRow = (p: LoanPayment): ExportRow => ({
+  dueDate: p.due_date,
+  person: p.loan?.person?.name ?? '—',
+  lent: p.loan?.amount_lent ?? 0,
+  interestRate: p.loan?.interest_rate ?? 0,
+  amount: p.amount,
+  installment: p.kind === 'parcela' ? `${p.installment_number ?? '?'}/${p.loan?.installments ?? '?'}` : '',
+  status: p.kind === 'parcela' ? 'Parcela paga' : 'Juros pago',
+  paidAt: p.paid_at,
+  method: p.payment_method ?? '',
+  description: p.loan?.description ?? '',
+})
+
+const EXPORT_COLUMNS: ReportColumn<ExportRow>[] = [
+  { header: 'Pagar até', accessor: (r) => formatDate(r.dueDate) },
+  { header: 'Cliente', accessor: (r) => r.person },
+  { header: 'Emprestado', accessor: (r) => formatCurrency(r.lent), align: 'right' },
+  { header: 'Juros', accessor: (r) => formatInterestRate(r.interestRate) || '0%', align: 'right' },
+  { header: 'Valor', accessor: (r) => formatCurrency(r.amount), align: 'right' },
+  { header: 'Parcela', accessor: (r) => r.installment },
+  { header: 'Status', accessor: (r) => r.status },
+  { header: 'Pago em', accessor: (r) => formatDate(r.paidAt) },
+  { header: 'Forma', accessor: (r) => r.method },
+  { header: 'Descrição', accessor: (r) => r.description },
 ]
 
 
@@ -101,6 +141,12 @@ export function LoansListPage() {
     return monthPayments.filter((p) => normalizeSearch(`${p.loan?.person?.name ?? ''} ${p.loan?.description ?? ''}`).includes(q))
   }, [monthPayments, filter, search])
 
+  // Mesma ordem da tela: empréstimos e, no fim, os pagamentos de juros/parcelas.
+  const exportRows = useMemo(
+    () => [...visible.map(loanToExportRow), ...visiblePayments.map(paymentToExportRow)],
+    [visible, visiblePayments],
+  )
+
   const counts: Record<Filter, number> = {
     todos: totals.count,
     pendente: totals.pendingCount,
@@ -119,7 +165,7 @@ export function LoansListPage() {
               sheetName="Empréstimos"
               filenameBase={allOverdueMode ? 'emprestimos-atrasados' : `emprestimos-${range.from.slice(0, 7)}`}
               columns={EXPORT_COLUMNS}
-              rows={visible}
+              rows={exportRows}
             />
             {/* Exportar à esquerda, "Novo empréstimo" à direita ocupando o resto (no celular). */}
             <Button onClick={() => openNewLoan()} className="flex-1 sm:flex-none">

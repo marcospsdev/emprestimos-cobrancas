@@ -8,6 +8,8 @@ import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/cn'
 import { PushSettings } from '@/components/shared/PushStatus'
 import { ChangePasswordDialog } from './ChangePasswordDialog'
+import { PixKeyDialog } from '@/features/settings/PixKeyDialog'
+import { usePixInfo } from '@/features/settings/api/useSettings'
 
 interface AccountSheetProps {
   open: boolean
@@ -23,11 +25,18 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   const confirm = useConfirm()
   const { showToast } = useToast()
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const [pixOpen, setPixOpen] = useState(false)
+  const pix = usePixInfo()
   const navigate = useNavigate()
 
   const openStorage = () => {
     onOpenChange(false)
     navigate('/armazenamento')
+  }
+
+  const openPix = () => {
+    onOpenChange(false)
+    setPixOpen(true)
   }
 
   const openChangePassword = () => {
@@ -59,6 +68,13 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
           <DialogBody className="pb-6">
             <p className="mb-2 text-sm font-medium text-text-secondary">Avisos de vencimento</p>
             <PushSettings />
+            <p className="mt-5 mb-2 text-sm font-medium text-text-secondary">Cobrança</p>
+            <SheetButton
+              icon="tabler:qrcode"
+              label="Chave Pix"
+              detail={pix ? 'Vai junto na mensagem de cobrar' : 'Não cadastrada — toque para cadastrar'}
+              onClick={openPix}
+            />
             <p className="mt-5 mb-2 text-sm font-medium text-text-secondary">Conta</p>
             <div className="flex flex-col gap-2">
               <SheetButton icon="tabler:database" label="Armazenamento" onClick={openStorage} />
@@ -69,11 +85,24 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
         </DialogContent>
       </Dialog>
       <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
+      <PixKeyDialog open={pixOpen} onOpenChange={setPixOpen} />
     </>
   )
 }
 
-function SheetButton({ icon, label, onClick, danger }: { icon: string; label: string; onClick: () => void; danger?: boolean }) {
+function SheetButton({
+  icon,
+  label,
+  detail,
+  onClick,
+  danger,
+}: {
+  icon: string
+  label: string
+  detail?: string
+  onClick: () => void
+  danger?: boolean
+}) {
   return (
     <button
       type="button"
@@ -86,7 +115,10 @@ function SheetButton({ icon, label, onClick, danger }: { icon: string; label: st
       )}
     >
       <Icon icon={icon} className="size-5 shrink-0" />
-      <span className="flex-1">{label}</span>
+      <span className="flex-1 py-2">
+        {label}
+        {detail && <span className="block text-sm font-normal text-text-muted">{detail}</span>}
+      </span>
       {!danger && <Icon icon="tabler:chevron-right" className="size-5 text-text-muted" />}
     </button>
   )

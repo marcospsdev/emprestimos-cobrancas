@@ -161,3 +161,20 @@ $;
 
 -- Parcelamento (fn_pay_installment e fn_undo_interest atualizada para parcelas):
 -- veja supabase/migrations/2026-11-22_parcelamento.sql
+
+-- =====================================================
+-- Configurações do usuário: chave Pix da cobrança (migração 2026-11-23_chave_pix.sql)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id        UUID PRIMARY KEY DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  pix_key_type   TEXT CHECK (pix_key_type IS NULL OR pix_key_type IN ('cpf', 'cnpj', 'email', 'telefone', 'aleatoria')),
+  pix_key        TEXT,
+  pix_bank       TEXT,
+  pix_holder     TEXT,
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT user_settings_pix_pair_check CHECK ((pix_key IS NULL) = (pix_key_type IS NULL))
+);
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "user_settings_policy" ON user_settings;
+CREATE POLICY "user_settings_policy" ON user_settings FOR ALL
+  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
