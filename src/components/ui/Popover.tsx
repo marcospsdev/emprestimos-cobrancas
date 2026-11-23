@@ -17,6 +17,9 @@ export function PopoverContent({
       <PopoverPrimitive.Content
         sideOffset={sideOffset}
         align={align}
+        // Dentro de um modal, a rolagem fora dele é bloqueada; assim o conteúdo rola.
+        onWheel={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
         className={cn(
           'z-50 rounded-lg border border-border-strong bg-surface-elevated p-1 shadow-card outline-none data-[state=open]:animate-fade-in',
           className,

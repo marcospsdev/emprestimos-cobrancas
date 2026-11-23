@@ -117,6 +117,11 @@ export function ComboboxField({
             onOpenAutoFocus={(e) => {
               if (isTouchDevice()) e.preventDefault()
             }}
+            // A lista fica fora do modal (para não ser cortada), e o modal bloqueia
+            // a rolagem de tudo que está fora dele. Parar o evento aqui deixa a
+            // lista rolar com a roda do mouse e com o dedo.
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
             className="z-50 w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-xl border border-border-strong bg-surface-elevated shadow-card data-[state=open]:animate-fade-in"
           >
             <div className="flex items-center gap-2 border-b border-border px-3">
@@ -129,7 +134,7 @@ export function ComboboxField({
                 className="h-12 w-full bg-transparent text-base text-text-primary placeholder:text-text-muted outline-none sm:h-10 sm:text-sm"
               />
             </div>
-            <div className="max-h-[min(16rem,40dvh)] overflow-y-auto p-1">
+            <div className="max-h-[min(16rem,40dvh)] overflow-y-auto overscroll-contain p-1">
               {filtered.length === 0 ? (
                 <p className="px-3 py-4 text-center text-sm text-text-muted">{emptyMessage}</p>
               ) : (
