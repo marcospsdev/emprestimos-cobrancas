@@ -201,18 +201,18 @@ async function runDaily(sa: ServiceAccount) {
   if (error) throw error
   if (!loans?.length) return json({ today, loans: 0, sent: 0 })
 
-  const userIds = [...new Set(loans.map((l) => l.user_id))]
-  const { data: devices } = await admin.from('push_devices').select('id, user_id, token').in('user_id', userIds)
-  const devicesByUser = new Map<string, Device[]>()
-  for (const d of devices ?? []) devicesByUser.set(d.user_id, [...(devicesByUser.get(d.user_id) ?? []), d])
+  // Base compartilhada: todo usuário vê todos os empréstimos, então cada aviso
+  // vai para todos os aparelhos cadastrados (de qualquer usuário).
+  const { data: devices } = await admin.from('push_devices').select('id, user_id, token')
+  const allDevices = (devices ?? []) as Device[]
 
   const accessToken = await getAccessToken(sa)
   let sent = 0
   let skipped = 0
 
   for (const loan of loans as unknown as DueLoan[]) {
-    const userDevices = devicesByUser.get(loan.user_id)
-    if (!userDevices?.length) {
+    const userDevices = allDevices
+    if (!userDevices.length) {
       skipped++
       continue
     }

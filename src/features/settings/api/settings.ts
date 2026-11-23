@@ -15,7 +15,8 @@ export async function fetchSettings(): Promise<UserSettings | null> {
 export async function saveSettings(payload: UserSettingsInput): Promise<UserSettings> {
   const { data, error } = await supabase
     .from('user_settings')
-    .upsert({ ...payload, updated_at: new Date().toISOString() })
+    // Linha única do sistema (id = true): a mesma chave Pix para todos os usuários.
+    .upsert({ id: true, ...payload, updated_at: new Date().toISOString() }, { onConflict: 'id' })
     .select()
     .single()
   if (error) {

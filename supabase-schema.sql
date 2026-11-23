@@ -178,3 +178,13 @@ ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "user_settings_policy" ON user_settings;
 CREATE POLICY "user_settings_policy" ON user_settings FOR ALL
   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- =====================================================
+-- IMPORTANTE (2026-11-23): base COMPARTILHADA entre todos os usuários.
+-- A migração 2026-11-23_base_compartilhada.sql substitui as políticas acima:
+-- qualquer usuário logado vê/altera people, loans, loan_payments, user_settings
+-- e notification_log (USING (true) TO authenticated). user_id = só "quem cadastrou",
+-- com FK ON DELETE SET NULL (excluir usuário NÃO apaga dados).
+-- user_settings vira linha única (id BOOLEAN PRIMARY KEY = true): uma chave Pix do sistema.
+-- push_devices continua por usuário; os avisos vão para todos os aparelhos.
+-- =====================================================
