@@ -24,6 +24,7 @@ import { CheckboxField } from '@/components/ui/form/CheckboxField'
 import { useToast } from '@/components/ui/Toast'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useDiscardGuard } from '@/hooks/useDiscardGuard'
+import { cn } from '@/lib/cn'
 import { formatCurrency, todayISO } from '@/lib/format'
 import { maskPhone } from '@/lib/whatsapp'
 import { useCreatePerson, usePeopleQuery } from '@/features/people/api/usePeople'
@@ -32,7 +33,7 @@ import { emptyLoanValues, loanSchema, loanToFormValues, type LoanFormValues } fr
 import { useCreateLoan, useDeleteLoan, useUpdateLoan } from './api/useLoans'
 import { PersonNotFoundError } from './api/loans'
 import { PaymentMethodPicker } from './PaymentMethodPicker'
-import { computeAmountToReceive, loanLabel } from './status'
+import { computeAmountToReceive, installmentAmount, loanLabel } from './status'
 
 interface LoanFormModalProps {
   open: boolean
@@ -48,6 +49,8 @@ const DUE_SHORTCUTS: { label: string; days?: number; months?: number }[] = [
   { label: '15 dias', days: 15 },
   { label: '1 mês', months: 1 },
 ]
+
+const INSTALLMENT_SHORTCUTS = [2, 3, 4, 5, 6, 10, 12]
 
 export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: LoanFormModalProps) {
   const isEdit = !!loan
@@ -86,10 +89,13 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
     reset(loan ? loanToFormValues(loan) : emptyLoanValues(defaultPersonId))
   }, [open, loan, isEdit, defaultPersonId, reset])
 
-  const [personMode, amountLent, interestRate, loanDate, isPaid] = useWatch({
+  const [personMode, amountLent, interestRate, loanDate, isPaid, payMode, installments] = useWatch({
     control,
-    name: ['person_mode', 'amount_lent', 'interest_rate', 'loan_date', 'is_paid'],
+    name: ['person_mode', 'amount_lent', 'interest_rate', 'loan_date', 'is_paid', 'pay_mode', 'installments'],
   })
+  const parcelado = payMode === 'parcelado'
+  // Com parcela já paga, mudar valor/juros/parcelas bagunçaria o que já foi recebido.
+  const locked = isEdit && (loan?.installments_paid ?? 0) > 0
 
   const personOptions = useMemo(
     () => (people ?? []).map((p) => ({ value: p.id, label: p.name, description: p.phone ?? undefined })),
@@ -98,6 +104,13 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
 
   const amountToReceive = computeAmountToReceive(amountLent, interestRate)
   const profit = amountToReceive - (amountLent || 0)
+  const perInstallment =
+    parcelado && installments >= 2 ? installmentAmount({ amount_to_receive: amountToReceive, installments }) : 0
+
+  const setPayMode = (mode: 'avista' | 'parcelado') => {
+    setValue('pay_mode', mode, { shouldDirty: true })
+    if (!installments || installments < 2) setValue('installments', 2, { shouldDirty: true })
+  }
 
   const setDueIn = ({ days = 0, months = 0 }: { days?: number; months?: number }) => {
     const base = loanDate ? parseISO(loanDate) : new Date()
@@ -129,6 +142,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
         amount_lent: values.amount_lent,
         interest_rate: values.interest_rate,
         amount_to_receive: computeAmountToReceive(values.amount_lent, values.interest_rate),
+        installments: values.pay_mode === 'parcelado' ? values.installments : 1,
         loan_date: values.loan_date,
         due_date: values.due_date,
         paid_at: values.is_paid ? values.paid_at : null,
@@ -186,7 +200,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
         <form onSubmit={handleSubmit(onSubmit, () => showToast('Confira os campos destacados em vermelho.', 'warning'))} className="flex min-h-0 flex-1 flex-col" noValidate>
           <DialogHeader>
             <DialogTitle>{isEdit ? 'Editar empréstimo' : 'Novo empréstimo'}</DialogTitle>
-            {!isEdit && <DialogDescription>Cliente, valor, juros e data de pagamento.</DialogDescription>}
+            {!isEdit && <DialogDescription>Cliente, valor, juros e como vai pagar.</DialogDescription>}
           </DialogHeader>
 
           <DialogBody>
@@ -273,6 +287,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                         value={field.value || null}
                         onValueChange={(v) => field.onChange(v ?? 0)}
                         error={errors.amount_lent?.message}
+                        disabled={locked}
                       />
                     )}
                   />
@@ -285,6 +300,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                         value={field.value || null}
                         onValueChange={(v) => field.onChange(v ?? 0)}
                         error={errors.interest_rate?.message}
+                        disabled={locked}
                       />
                     )}
                   />
@@ -305,6 +321,74 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                 )}
               </div>
 
+              {/* ---- Como vai pagar: de uma vez ou parcelado ---- */}
+              <div className="flex flex-col gap-3">
+                <div>
+                  <p className="mb-1.5 text-sm font-medium text-text-secondary">Como vai pagar?</p>
+                  <div role="radiogroup" aria-label="Como vai pagar?" className="grid grid-cols-2 gap-2">
+                    <ModeButton selected={!parcelado} disabled={locked} onClick={() => setPayMode('avista')} icon="tabler:cash" label="De uma vez" />
+                    <ModeButton selected={parcelado} disabled={locked} onClick={() => setPayMode('parcelado')} icon="tabler:calendar-repeat" label="Parcelado" />
+                  </div>
+                  {locked && (
+                    <p className="mt-1.5 text-sm text-text-muted sm:text-xs">
+                      Já tem parcela paga. Para mudar valor, juros ou parcelas, desfaça antes os pagamentos das parcelas.
+                    </p>
+                  )}
+                </div>
+                {parcelado && (
+                  <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface-elevated/50 p-4">
+                    <Controller
+                      control={control}
+                      name="installments"
+                      render={({ field }) => (
+                        <TextField
+                          label="Em quantas vezes"
+                          required
+                          type="text"
+                          inputMode="numeric"
+                          enterKeyHint="next"
+                          disabled={locked}
+                          value={field.value ? String(field.value) : ''}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 3)
+                            field.onChange(digits ? Number(digits) : 0)
+                          }}
+                          onBlur={field.onBlur}
+                          error={errors.installments?.message}
+                        />
+                      )}
+                    />
+                    {!locked && (
+                      <div className="flex flex-wrap gap-2">
+                        {INSTALLMENT_SHORTCUTS.map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setValue('installments', n, { shouldValidate: true, shouldDirty: true })}
+                            className={cn(
+                              'h-10 min-w-12 cursor-pointer rounded-lg border px-3 text-sm font-medium transition-colors',
+                              installments === n
+                                ? 'border-brand-500 bg-brand-500/15 text-text-primary'
+                                : 'border-border-strong bg-surface-elevated text-text-secondary hover:bg-surface-hover hover:text-text-primary',
+                            )}
+                          >
+                            {n}x
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {perInstallment > 0 && (
+                      <p className="text-base text-text-primary sm:text-sm">
+                        <span className="font-semibold">
+                          {installments}x de {formatCurrency(perInstallment)}
+                        </span>{' '}
+                        <span className="text-text-secondary">· uma parcela por mês</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* ---- Datas ---- */}
               <div className="flex flex-col gap-4">
                 <Controller
@@ -318,7 +402,15 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                   control={control}
                   name="due_date"
                   render={({ field }) => (
-                    <DateField label="Data do pagamento" required error={errors.due_date?.message} value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
+                    <DateField
+                      label={!parcelado ? 'Data do pagamento' : locked ? 'Vencimento da parcela atual' : 'Vencimento da 1ª parcela'}
+                      hint={parcelado && !locked ? 'As outras vencem no mesmo dia dos meses seguintes.' : undefined}
+                      required
+                      error={errors.due_date?.message}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
                   )}
                 />
               </div>
@@ -341,7 +433,7 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                   empréstimo. O exemplo aparece só como dica, e só no cadastro novo. */}
               <TextareaField
                 label="Descrição (opcional)"
-                hint={isEdit ? undefined : 'Exemplo: vai pagar em 3 vezes de R$ 200, todo dia 10.'}
+                hint={isEdit ? undefined : 'Exemplo: combinou de pagar pelo Pix.'}
                 autoCapitalize="sentences"
                 rows={5}
                 {...register('description')}
@@ -355,8 +447,14 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
                     name="is_paid"
                     render={({ field }) => (
                       <CheckboxField
-                        label="Já foi pago"
-                        description={field.value ? 'Informe quando e como recebeu.' : 'Marque quando o cliente pagar.'}
+                        label={parcelado ? 'Já foi quitado' : 'Já foi pago'}
+                        description={
+                          field.value
+                            ? 'Informe quando e como recebeu.'
+                            : parcelado
+                              ? 'Marque quando o cliente pagar tudo o que falta.'
+                              : 'Marque quando o cliente pagar.'
+                        }
                         checked={field.value}
                         onChange={(checked) => {
                           field.onChange(checked)
@@ -404,5 +502,38 @@ export function LoanFormModal({ open, onOpenChange, loan, defaultPersonId }: Loa
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function ModeButton({
+  selected,
+  disabled,
+  onClick,
+  icon,
+  label,
+}: {
+  selected: boolean
+  disabled?: boolean
+  onClick: () => void
+  icon: string
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        'flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 px-3 text-base font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:text-sm',
+        selected
+          ? 'border-brand-500 bg-brand-500/15 text-text-primary'
+          : 'border-border-strong bg-surface-elevated text-text-secondary hover:bg-surface-hover',
+      )}
+    >
+      <Icon icon={icon} className={cn('size-5 shrink-0', selected ? 'text-brand-400' : 'text-text-muted')} />
+      {label}
+    </button>
   )
 }

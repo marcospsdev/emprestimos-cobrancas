@@ -123,7 +123,7 @@ export function PeopleListPage() {
         <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
           {visible.map((person) => {
             const t = totalsByPerson.get(person.id)
-            const open = (t?.pending ?? 0) + (t?.overdue ?? 0)
+            const open = t?.owed ?? 0
             return (
               <li key={person.id} className="flex items-center pr-2">
                 <Link

@@ -16,7 +16,19 @@ import { LoanStatusBadge, LoanStatusLegend } from './LoanStatusBadge'
 import { MarkPaidDialog } from './MarkPaidDialog'
 import { InterestPaymentRow } from './InterestPaymentRow'
 import { PaidCheck } from './PaidCheck'
-import { STATUS_BG_CLASS, STATUS_ROW_CLASS, formatInterestRate, getLoanStatus, interestAmount, loanLabel } from './status'
+import {
+  STATUS_BG_CLASS,
+  STATUS_ROW_CLASS,
+  amountDueNow,
+  currentInstallment,
+  formatInterestRate,
+  getLoanStatus,
+  installmentLabel,
+  interestAmount,
+  isInstallmentLoan,
+  loanLabel,
+  remainingAmount,
+} from './status'
 
 interface LoanListProps {
   loans: Loan[] | undefined
@@ -108,6 +120,9 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
         {(loans ?? []).map((loan) => {
           const status = getLoanStatus(loan, today)
           const paid = status === 'pago'
+          const parcelado = isInstallmentLoan(loan)
+          // Parcelado: o valor da parcela da vez (quitado: o que faltava ao quitar).
+          const amount = paid ? remainingAmount(loan) : amountDueNow(loan)
           return (
             <li key={loan.id} className={cn('relative', STATUS_ROW_CLASS[status])}>
               {/* Barra lateral na cor do status */}
@@ -145,7 +160,12 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
                       paid ? 'text-text-secondary' : 'text-text-primary',
                     )}
                   >
-                    {formatCurrency(loan.amount_to_receive)}
+                    {formatCurrency(amount)}
+                    {parcelado && (
+                      <span className="ml-1.5 text-xs font-medium text-text-secondary">
+                        {paid ? `${loan.installments}x · quitado` : `parcela ${currentInstallment(loan)}/${loan.installments}`}
+                      </span>
+                    )}
                     {loan.interest_rate > 0 && (
                       <span className="ml-1.5 text-xs font-medium text-gold-400">+{formatInterestRate(loan.interest_rate)}</span>
                     )}
@@ -184,8 +204,9 @@ export function LoanList({ loans, loading, showPerson = true, showLegend = true,
                         className="h-11 gap-1.5 px-3 text-sm sm:h-9 sm:px-2.5"
                         message={buildChargeMessage({
                           personName: loan.person.name,
-                          amount: loan.amount_to_receive,
-                          interest: interestAmount(loan),
+                          amount,
+                          interest: parcelado ? 0 : interestAmount(loan),
+                          installment: parcelado ? installmentLabel(loan).toLowerCase() : undefined,
                           dueDate: loan.due_date,
                           overdue: status === 'atrasado',
                         })}

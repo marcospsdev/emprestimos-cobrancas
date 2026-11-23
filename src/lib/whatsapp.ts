@@ -18,19 +18,22 @@ interface ChargeInfo {
   /** Só os juros: se informado (> 0), a mensagem oferece pagar só os juros. */
   interest?: number
   amount: number
+  /** Parcelado: "parcela 2 de 5" (a mensagem cobra só a parcela). */
+  installment?: string
   dueDate: string
   overdue: boolean
 }
 
 /** Mensagem de cobrança educada, pronta pra enviar — a pessoa só aperta "enviar". */
-export function buildChargeMessage({ personName, amount, interest, dueDate, overdue }: ChargeInfo): string {
+export function buildChargeMessage({ personName, amount, interest, installment, dueDate, overdue }: ChargeInfo): string {
   const firstName = personName.trim().split(/\s+/)[0] ?? personName
   const value = formatCurrency(amount)
   const date = formatDate(dueDate)
   const option = interest && interest > 0 ? ` (ou ${formatCurrency(interest)} se for pagar só os juros deste mês)` : ''
+  const what = installment ? `da ${installment} do empréstimo, no valor de ${value}` : `do empréstimo no valor de ${value}${option}`
   return overdue
-    ? `Olá, ${firstName}! Tudo bem? Passando para lembrar do empréstimo no valor de ${value}${option}, que venceu em ${date}. Consegue me avisar quando vai conseguir pagar?`
-    : `Olá, ${firstName}! Tudo bem? Passando para lembrar do empréstimo no valor de ${value}${option}, com pagamento combinado para ${date}.`
+    ? `Olá, ${firstName}! Tudo bem? Passando para lembrar ${what}, que venceu em ${date}. Consegue me avisar quando vai conseguir pagar?`
+    : `Olá, ${firstName}! Tudo bem? Passando para lembrar ${what}, com pagamento combinado para ${date}.`
 }
 
 /** Formata enquanto digita: (11) 91234-5678 */

@@ -13,7 +13,7 @@ import { useLoansQuery } from '@/features/loans/api/useLoans'
 import { usePaymentsQuery } from '@/features/loans/api/usePayments'
 import { LoanList } from '@/features/loans/LoanList'
 import { useLoanForm } from '@/features/loans/loanFormContext'
-import { sortLoans, summarizeLoans } from '@/features/loans/status'
+import { sortLoans, summarizeLoans, type LoanTotals } from '@/features/loans/status'
 import { useDeletePerson, usePersonQuery } from './api/usePeople'
 import { PersonFormModal } from './PersonFormModal'
 
@@ -92,7 +92,7 @@ export function PersonDetailPage() {
       <div className="grid grid-cols-2 gap-3">
         <StatCard
           label="Deve"
-          value={formatCurrency(totals.pending + totals.overdue)}
+          value={formatCurrency(totals.owed)}
           icon="tabler:clock-dollar"
           // Cores de status: vermelho se tem atraso, azul (a receber) se só está em aberto.
           tone={totals.overdue > 0 ? 'danger' : totals.pending > 0 ? 'info' : 'neutral'}
@@ -104,7 +104,7 @@ export function PersonDetailPage() {
           value={formatCurrency(totals.received)}
           icon="tabler:circle-check"
           tone="success"
-          hint={totals.interestPaymentCount > 0 ? `inclui ${totals.interestPaymentCount} pagamento(s) de juros` : `${totals.paidCount} quitado(s)`}
+          hint={paidHint(totals)}
           loading={loadingLoans}
         />
       </div>
@@ -130,4 +130,12 @@ export function PersonDetailPage() {
       <PersonFormModal open={editOpen} onOpenChange={setEditOpen} person={person} />
     </div>
   )
+}
+
+/** Dica do "Já pagou": diz se entrou pagamento de juros ou de parcela. */
+function paidHint(t: LoanTotals): string {
+  const parts: string[] = []
+  if (t.installmentPaymentCount > 0) parts.push(`${t.installmentPaymentCount} parcela(s)`)
+  if (t.interestPaymentCount > 0) parts.push(`${t.interestPaymentCount} pagamento(s) de juros`)
+  return parts.length ? `inclui ${parts.join(' e ')}` : `${t.paidCount} quitado(s)`
 }

@@ -15,9 +15,19 @@ import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
 import { formatCurrency, formatDate, todayISO } from '@/lib/format'
 import type { Loan } from '@/types/database'
-import { interestAmount, loanLabel, nextMonthlyDue } from './status'
+import {
+  amountDueNow,
+  currentInstallment,
+  installmentLabel,
+  interestAmount,
+  isInstallmentLoan,
+  isLastInstallment,
+  loanLabel,
+  nextMonthlyDue,
+  remainingAmount,
+} from './status'
 import { useUpdateLoan } from './api/useLoans'
-import { usePayInterest } from './api/usePayments'
+import { usePayInstallment, usePayInterest } from './api/usePayments'
 import { PaymentMethodPicker } from './PaymentMethodPicker'
 
 interface MarkPaidDialogProps {
@@ -26,9 +36,11 @@ interface MarkPaidDialogProps {
 }
 
 /**
- * Registrar pagamento ao tocar no check. Com juros, o cliente tem duas opções:
- * - pagar tudo (emprestado + juros) e quitar;
- * - pagar só os juros: o empréstimo continua e o vencimento vai para o mês seguinte.
+ * Registrar pagamento ao tocar no check.
+ * - De uma vez, com juros: pagar tudo e quitar, ou pagar só os juros (o
+ *   empréstimo continua e o vencimento vai para o mês seguinte).
+ * - Parcelado: pagar a parcela da vez (vai para o mês seguinte) ou pagar tudo
+ *   o que falta e quitar. A última parcela quita.
  */
 export function MarkPaidDialog({ loan, onOpenChange }: MarkPaidDialogProps) {
   return (
@@ -41,22 +53,30 @@ export function MarkPaidDialog({ loan, onOpenChange }: MarkPaidDialogProps) {
   )
 }
 
-type Option = 'tudo' | 'juros'
+type Option = 'tudo' | 'juros' | 'parcela'
 
 function MarkPaidForm({ loan, onClose }: { loan: Loan; onClose: () => void }) {
   const { showToast } = useToast()
   const updateLoan = useUpdateLoan()
   const payInterest = usePayInterest()
-  const interest = interestAmount(loan)
+  const payInstallment = usePayInstallment()
+  const parcelado = isInstallmentLoan(loan)
+  const lastInstallment = parcelado && isLastInstallment(loan)
+  // Parcelado não tem "só juros": os juros (se houver) já estão dentro das parcelas.
+  const interest = parcelado ? 0 : interestAmount(loan)
   const hasInterest = interest > 0
+  const remaining = remainingAmount(loan)
+  const dueNow = amountDueNow(loan)
+  const hasChoice = hasInterest || (parcelado && !lastInstallment)
 
-  const [option, setOption] = useState<Option>('tudo')
+  const [option, setOption] = useState<Option>(parcelado && !lastInstallment ? 'parcela' : 'tudo')
   const [paidAt, setPaidAt] = useState(todayISO)
   const [nextDue, setNextDue] = useState(() => nextMonthlyDue(loan.due_date))
   const [method, setMethod] = useState('')
 
-  const saving = updateLoan.isPending || payInterest.isPending
-  const nextDueInvalid = option === 'juros' && (!nextDue || nextDue <= loan.due_date)
+  const saving = updateLoan.isPending || payInterest.isPending || payInstallment.isPending
+  const rollsOver = option === 'juros' || option === 'parcela'
+  const nextDueInvalid = rollsOver && (!nextDue || nextDue <= loan.due_date)
   const canConfirm = !!paidAt && !nextDueInvalid
 
   const confirm = async () => {
@@ -65,6 +85,12 @@ function MarkPaidForm({ loan, onClose }: { loan: Loan; onClose: () => void }) {
       if (option === 'tudo') {
         await updateLoan.mutateAsync({ id: loan.id, payload: { paid_at: paidAt, payment_method: method || null } })
         showToast(`${loanLabel(loan)} quitado${method ? ` (${method})` : ''}.`, 'success')
+      } else if (option === 'parcela') {
+        await payInstallment.mutateAsync({ loanId: loan.id, paidAt, paymentMethod: method || null, nextDue })
+        showToast(
+          `Parcela ${currentInstallment(loan)} de ${loan.installments} recebida (${formatCurrency(dueNow)}). Próxima: ${formatDate(nextDue)}.`,
+          'success',
+        )
       } else {
         await payInterest.mutateAsync({ loanId: loan.id, paidAt, paymentMethod: method || null, nextDue })
         showToast(`Juros de ${formatCurrency(interest)} recebidos. Próximo vencimento: ${formatDate(nextDue)}.`, 'success')
@@ -80,7 +106,7 @@ function MarkPaidForm({ loan, onClose }: { loan: Loan; onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>Registrar pagamento</DialogTitle>
         <DialogDescription>
-          {loan.person?.name ?? 'Empréstimo'} · vence {formatDate(loan.due_date)}
+          {loan.person?.name ?? 'Empréstimo'} · {parcelado ? `${installmentLabel(loan)} · ` : ''}vence {formatDate(loan.due_date)}
         </DialogDescription>
       </DialogHeader>
       <DialogBody>
@@ -107,17 +133,41 @@ function MarkPaidForm({ loan, onClose }: { loan: Loan; onClose: () => void }) {
             </div>
           )}
 
-          {!hasInterest && (
+          {parcelado && !lastInstallment && (
+            <div role="radiogroup" aria-label="O que o cliente pagou?" className="flex flex-col gap-2">
+              <p className="text-sm font-medium text-text-secondary">O que o cliente pagou?</p>
+              <OptionCard
+                selected={option === 'parcela'}
+                onSelect={() => setOption('parcela')}
+                icon="tabler:calendar-repeat"
+                title={`Pagou a parcela ${currentInstallment(loan)} de ${loan.installments}`}
+                amount={dueNow}
+                description={`Fica faltando ${formatCurrency(remaining - dueNow)}. A próxima vence no mês seguinte.`}
+              />
+              <OptionCard
+                selected={option === 'tudo'}
+                onSelect={() => setOption('tudo')}
+                icon="tabler:circle-check"
+                title="Pagou tudo o que falta"
+                amount={remaining}
+                description="Quita o empréstimo."
+              />
+            </div>
+          )}
+
+          {!hasChoice && (
             <p className="rounded-xl border border-border bg-surface-elevated px-4 py-3 text-base text-text-primary sm:text-sm">
-              Valor: <span className="font-semibold">{formatCurrency(loan.amount_to_receive)}</span>
+              {lastInstallment ? 'Última parcela: ' : 'Valor: '}
+              <span className="font-semibold">{formatCurrency(dueNow)}</span>
+              {lastInstallment && <span className="block text-sm text-text-secondary">Com ela, o empréstimo fica quitado.</span>}
             </p>
           )}
 
           <DateField label="Pago em" value={paidAt} onChange={setPaidAt} required />
 
-          {option === 'juros' && (
+          {rollsOver && (
             <DateField
-              label="Próximo vencimento"
+              label={option === 'parcela' ? 'Vencimento da próxima parcela' : 'Próximo vencimento'}
               value={nextDue}
               onChange={setNextDue}
               required
@@ -134,7 +184,7 @@ function MarkPaidForm({ loan, onClose }: { loan: Loan; onClose: () => void }) {
           Cancelar
         </Button>
         <Button type="button" onClick={confirm} loading={saving} disabled={!canConfirm}>
-          {option === 'juros' ? 'Registrar juros' : 'Quitar'}
+          {option === 'juros' ? 'Registrar juros' : option === 'parcela' ? 'Registrar parcela' : 'Quitar'}
         </Button>
       </DialogFooter>
     </>

@@ -24,6 +24,10 @@ import {
   getLoanStatus,
   sortLoans,
   summarizeLoans,
+  amountDueNow,
+  currentInstallment,
+  isInstallmentLoan,
+  remainingAmount,
 } from './status'
 
 type Filter = 'todos' | LoanStatus
@@ -35,7 +39,8 @@ const EXPORT_COLUMNS: ReportColumn<Loan>[] = [
   { header: 'Cliente', accessor: (l) => l.person?.name ?? '—' },
   { header: 'Emprestado', accessor: (l) => formatCurrency(l.amount_lent), align: 'right' },
   { header: 'Juros', accessor: (l) => formatInterestRate(l.interest_rate) || '0%', align: 'right' },
-  { header: 'A receber', accessor: (l) => formatCurrency(l.amount_to_receive), align: 'right' },
+  { header: 'A receber', accessor: (l) => formatCurrency(getLoanStatus(l) === 'pago' ? remainingAmount(l) : amountDueNow(l)), align: 'right' },
+  { header: 'Parcela', accessor: (l) => (isInstallmentLoan(l) ? `${Math.min(currentInstallment(l), l.installments)}/${l.installments}` : '') },
   { header: 'Status', accessor: (l) => STATUS_LABEL[getLoanStatus(l)] },
   { header: 'Pago em', accessor: (l) => formatDate(l.paid_at) },
   { header: 'Forma', accessor: (l) => l.payment_method ?? '' },

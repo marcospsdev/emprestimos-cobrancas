@@ -22,6 +22,10 @@ export interface Loan {
   interest_rate: number
   /** Calculado no app: amount_lent × (1 + interest_rate/100). */
   amount_to_receive: number
+  /** Em quantas parcelas mensais (1 = de uma vez). O total é dividido igualmente. */
+  installments: number
+  /** Parcelas já pagas (registradas em loan_payments). A última quita o empréstimo. */
+  installments_paid: number
   loan_date: string
   due_date: string
   paid_at: string | null
@@ -37,23 +41,30 @@ export type LoanInput = Pick<
   | 'amount_lent'
   | 'interest_rate'
   | 'amount_to_receive'
+  | 'installments'
   | 'loan_date'
   | 'due_date'
   | 'paid_at'
   | 'payment_method'
 >
 
-/** Pagamento só dos juros: o empréstimo continua e o vencimento vai para o mês seguinte. */
+/**
+ * Pagamento que não quita o empréstimo; o vencimento vai para o mês seguinte:
+ * - juros: pagou só os juros (o valor devido continua igual);
+ * - parcela: pagou uma parcela de um empréstimo parcelado.
+ */
 export interface LoanPayment {
   id: string
   user_id: string
   loan_id: string
-  kind: 'juros'
+  kind: 'juros' | 'parcela'
   amount: number
+  /** Número da parcela (só quando kind = parcela). */
+  installment_number: number | null
   /** Vencimento que este pagamento cobriu (mês em que aparece no resumo). */
   due_date: string
   paid_at: string
   payment_method: string | null
   created_at: string
-  loan?: Pick<Loan, 'id' | 'person_id' | 'amount_lent' | 'amount_to_receive' | 'interest_rate' | 'description' | 'paid_at' | 'person'> | null
+  loan?: Pick<Loan, 'id' | 'person_id' | 'amount_lent' | 'amount_to_receive' | 'interest_rate' | 'installments' | 'description' | 'paid_at' | 'person'> | null
 }

@@ -171,7 +171,22 @@ interface DueLoan {
   amount_lent: number
   amount_to_receive: number
   due_date: string
+  /** Parcelado (pode faltar enquanto a migração de parcelamento não roda). */
+  installments?: number
+  installments_paid?: number
   person: { name: string } | null
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+/** O que vence agora: o total, ou só a parcela da vez (a última acerta os centavos). */
+function dueNow(loan: DueLoan): { amount: number; installment: string | null } {
+  const n = loan.installments ?? 1
+  if (n <= 1) return { amount: loan.amount_to_receive, installment: null }
+  const paid = loan.installments_paid ?? 0
+  const each = round2(loan.amount_to_receive / n)
+  const amount = paid + 1 >= n ? round2(loan.amount_to_receive - paid * each) : each
+  return { amount, installment: `parcela ${paid + 1} de ${n}` }
 }
 
 async function runDaily(sa: ServiceAccount) {
@@ -180,7 +195,7 @@ async function runDaily(sa: ServiceAccount) {
 
   const { data: loans, error } = await admin
     .from('loans')
-    .select('id, user_id, amount_lent, amount_to_receive, due_date, person:people(name)')
+    .select('*, person:people(name)')
     .is('paid_at', null)
     .in('due_date', [today, tomorrow])
   if (error) throw error
@@ -215,12 +230,14 @@ async function runDaily(sa: ServiceAccount) {
     }
 
     const name = loan.person?.name?.trim() || 'Cliente'
-    const interest = Math.max(0, Math.round((loan.amount_to_receive - loan.amount_lent) * 100) / 100)
+    const due = dueNow(loan)
+    const interest = due.installment ? 0 : Math.max(0, round2(loan.amount_to_receive - loan.amount_lent))
     const when = kind === 'dia' ? 'vence hoje' : 'vence amanhã'
     const ok = await sendToUser(sa, accessToken, userDevices, {
-      title: `${name}: ${currency.format(loan.amount_to_receive)} ${when}`,
-      body:
-        interest > 0
+      title: `${name}: ${currency.format(due.amount)} ${when}`,
+      body: due.installment
+        ? `É a ${due.installment}. Toque para ver e cobrar.`
+        : interest > 0
           ? `Ou ${currency.format(interest)} se pagar só os juros. Toque para ver e cobrar.`
           : 'Toque para ver e cobrar.',
       url: `/emprestimos?mes=${loan.due_date.slice(0, 7)}`,

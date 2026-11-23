@@ -3,7 +3,7 @@ import type { LoanPayment } from '@/types/database'
 
 // !inner: permite filtrar pelo cliente do empréstimo (loan.person_id).
 const PAYMENT_SELECT =
-  '*, loan:loans!inner(id, person_id, amount_lent, amount_to_receive, interest_rate, description, paid_at, person:people(id, name, phone))'
+  '*, loan:loans!inner(id, person_id, amount_lent, amount_to_receive, interest_rate, installments, description, paid_at, person:people(id, name, phone))'
 
 export interface PaymentFilters {
   /** Vencimento coberto a partir de (yyyy-MM-dd). */
@@ -43,5 +43,21 @@ export async function payInterest(params: {
 /** Desfaz o último pagamento de juros (o vencimento volta para o que era). */
 export async function undoInterest(paymentId: string): Promise<void> {
   const { error } = await supabase.rpc('fn_undo_interest', { p_payment_id: paymentId })
+  if (error) throw new Error(error.message)
+}
+
+/** Registra uma parcela (que não seja a última) e leva o vencimento para `nextDue`. */
+export async function payInstallment(params: {
+  loanId: string
+  paidAt: string
+  paymentMethod: string | null
+  nextDue: string
+}): Promise<void> {
+  const { error } = await supabase.rpc('fn_pay_installment', {
+    p_loan_id: params.loanId,
+    p_paid_at: params.paidAt,
+    p_payment_method: params.paymentMethod ?? '',
+    p_next_due: params.nextDue,
+  })
   if (error) throw new Error(error.message)
 }

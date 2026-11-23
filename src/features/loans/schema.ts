@@ -12,6 +12,14 @@ export const loanSchema = z
     amount_lent: z.number({ error: 'Informe o valor' }).positive('Informe o valor'),
     /** Juros em % (0 = sem juros). O valor a receber é calculado a partir dele. */
     interest_rate: z.number({ error: 'Informe os juros' }).min(0, 'Os juros não podem ser negativos'),
+    /** De uma vez (paga tudo num vencimento) ou parcelado (uma parcela por mês). */
+    pay_mode: z.enum(['avista', 'parcelado']),
+    /** Só vale no parcelado (2 ou mais). */
+    installments: z
+      .number({ error: 'Informe em quantas vezes' })
+      .int('Use um número inteiro')
+      .min(1, 'Informe em quantas vezes')
+      .max(120, 'No máximo 120 parcelas'),
     loan_date: z.string().min(1, 'Informe a data'),
     due_date: z.string().min(1, 'Informe a data de pagamento'),
     description: z.string(),
@@ -25,6 +33,9 @@ export const loanSchema = z
     }
     if (v.person_mode === 'new' && !v.new_person_name.trim()) {
       ctx.addIssue({ code: 'custom', path: ['new_person_name'], message: 'Informe o nome do cliente' })
+    }
+    if (v.pay_mode === 'parcelado' && v.installments < 2) {
+      ctx.addIssue({ code: 'custom', path: ['installments'], message: 'Parcelado é a partir de 2 vezes' })
     }
     if (v.is_paid && !v.paid_at) {
       ctx.addIssue({ code: 'custom', path: ['paid_at'], message: 'Informe a data do pagamento' })
@@ -41,6 +52,8 @@ export function emptyLoanValues(personId?: string): LoanFormValues {
     new_person_phone: '',
     amount_lent: 0,
     interest_rate: 0,
+    pay_mode: 'avista',
+    installments: 2,
     loan_date: todayISO(),
     due_date: '',
     description: '',
@@ -58,6 +71,8 @@ export function loanToFormValues(loan: Loan): LoanFormValues {
     new_person_phone: '',
     amount_lent: loan.amount_lent,
     interest_rate: loan.interest_rate ?? 0,
+    pay_mode: (loan.installments ?? 1) > 1 ? 'parcelado' : 'avista',
+    installments: Math.max(2, loan.installments ?? 1),
     loan_date: loan.loan_date,
     due_date: loan.due_date,
     description: loan.description ?? '',

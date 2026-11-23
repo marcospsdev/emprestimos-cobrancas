@@ -122,7 +122,7 @@ export function DashboardPage() {
           value={formatCurrency(totals.profit)}
           icon="tabler:trending-up"
           tone="gold"
-          hint={totals.interestPaymentCount > 0 ? 'inclui juros pagos' : 'dos que já pagaram'}
+          hint={totals.interestPaymentCount > 0 ? 'inclui juros pagos' : totals.installmentPaymentCount > 0 ? 'inclui parcelas' : 'dos que já pagaram'}
           loading={isLoading}
         />
         <StatCard

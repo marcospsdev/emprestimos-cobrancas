@@ -66,7 +66,7 @@ export const STATUS_ROW_CLASS: Record<LoanStatus, string> = {
 
 export interface LoanTotals {
   count: number
-  /** Soma do "a receber" de tudo (pago ou não). */
+  /** Soma do que vence no período (pago ou não). Parcelado: só a parcela do período. */
   expected: number
   received: number
   pending: number
@@ -74,16 +74,23 @@ export interface LoanTotals {
   overdueCount: number
   pendingCount: number
   paidCount: number
+  /** Parte emprestada (sem juros) do que vence no período. */
   lent: number
-  /** Lucro já realizado: juros dos quitados + pagamentos só de juros. */
+  /** Lucro já realizado: juros dos quitados, pagamentos só de juros e a parte de juros das parcelas. */
   profit: number
+  /** Tudo o que ainda falta pagar dos não quitados (parcelado: todas as parcelas restantes). */
+  owed: number
   /** Quantos pagamentos só de juros entraram na conta. */
   interestPaymentCount: number
+  /** Quantas parcelas pagas (sem quitar) entraram na conta. */
+  installmentPaymentCount: number
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100
+
 /**
- * Totais de uma lista de empréstimos. Os pagamentos só de juros (`payments`)
- * contam como recebidos e lucro no mês do vencimento que cobriram.
+ * Totais de uma lista de empréstimos. Pagamentos que não quitam (`payments`:
+ * só juros ou parcela) contam como recebidos no mês do vencimento que cobriram.
  */
 export function summarizeLoans(loans: Loan[], today = todayISO(), payments: LoanPayment[] = []): LoanTotals {
   const totals: LoanTotals = {
@@ -97,31 +104,97 @@ export function summarizeLoans(loans: Loan[], today = todayISO(), payments: Loan
     paidCount: 0,
     lent: 0,
     profit: 0,
-    interestPaymentCount: payments.length,
+    owed: 0,
+    interestPaymentCount: 0,
+    installmentPaymentCount: 0,
   }
   for (const p of payments) {
     totals.expected += p.amount
     totals.received += p.amount
-    totals.profit += p.amount
     totals.paidCount++
+    if (p.kind === 'parcela') {
+      const share = p.loan ? interestShare(p.loan) : 0
+      totals.profit += p.amount * share
+      totals.lent += p.amount * (1 - share)
+      totals.installmentPaymentCount++
+    } else {
+      totals.profit += p.amount
+      totals.interestPaymentCount++
+    }
   }
   for (const loan of loans) {
     const status = getLoanStatus(loan, today)
-    totals.expected += loan.amount_to_receive
-    totals.lent += loan.amount_lent
+    const share = interestShare(loan)
+    // Quitado: o que faltava na hora de quitar. Em aberto: o que vence agora.
+    const amount = status === 'pago' ? remainingAmount(loan) : amountDueNow(loan)
+    totals.expected += amount
+    totals.lent += amount * (1 - share)
     if (status === 'pago') {
-      totals.received += loan.amount_to_receive
-      totals.profit += loan.amount_to_receive - loan.amount_lent
+      totals.received += amount
+      totals.profit += amount * share
       totals.paidCount++
-    } else if (status === 'atrasado') {
-      totals.overdue += loan.amount_to_receive
+      continue
+    }
+    totals.owed += remainingAmount(loan)
+    if (status === 'atrasado') {
+      totals.overdue += amount
       totals.overdueCount++
     } else {
-      totals.pending += loan.amount_to_receive
+      totals.pending += amount
       totals.pendingCount++
     }
   }
+  for (const key of ['expected', 'received', 'pending', 'overdue', 'lent', 'profit', 'owed'] as const) {
+    totals[key] = round2(totals[key])
+  }
   return totals
+}
+
+// ---------------- Parcelamento ----------------
+
+type InstallmentInfo = Pick<Loan, 'amount_to_receive'> & Partial<Pick<Loan, 'installments' | 'installments_paid'>>
+
+/** Parcelado em 2 ou mais vezes. */
+export function isInstallmentLoan(loan: InstallmentInfo): boolean {
+  return (loan.installments ?? 1) > 1
+}
+
+/** Valor de cada parcela (a última acerta os centavos). */
+export function installmentAmount(loan: InstallmentInfo): number {
+  return round2(loan.amount_to_receive / Math.max(1, loan.installments ?? 1))
+}
+
+/** Número da parcela que está vencendo agora (1, 2, 3...). */
+export function currentInstallment(loan: InstallmentInfo): number {
+  return (loan.installments_paid ?? 0) + 1
+}
+
+/** A parcela que vence agora é a última (pagar = quitar). */
+export function isLastInstallment(loan: InstallmentInfo): boolean {
+  return currentInstallment(loan) >= (loan.installments ?? 1)
+}
+
+/** Quanto ainda falta pagar no total (parcelado: todas as parcelas restantes). */
+export function remainingAmount(loan: InstallmentInfo): number {
+  if (!isInstallmentLoan(loan)) return loan.amount_to_receive
+  return round2(loan.amount_to_receive - (loan.installments_paid ?? 0) * installmentAmount(loan))
+}
+
+/** O que o cliente precisa pagar neste vencimento: o total, ou só a parcela da vez. */
+export function amountDueNow(loan: InstallmentInfo): number {
+  if (!isInstallmentLoan(loan)) return loan.amount_to_receive
+  return isLastInstallment(loan) ? remainingAmount(loan) : installmentAmount(loan)
+}
+
+/** "Parcela 2 de 5". */
+export function installmentLabel(loan: InstallmentInfo): string {
+  return `Parcela ${currentInstallment(loan)} de ${loan.installments ?? 1}`
+}
+
+/** Parte de cada real recebido que é lucro (juros ÷ total). */
+function interestShare(loan: Pick<Loan, 'amount_lent' | 'amount_to_receive'>): number {
+  if (!loan.amount_to_receive) return 0
+  return Math.max(0, (loan.amount_to_receive - loan.amount_lent) / loan.amount_to_receive)
 }
 
 /** Ordem de exibição: atrasados primeiro, depois a receber (por data), pagos por último. */

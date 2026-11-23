@@ -58,11 +58,16 @@ CREATE TABLE loans (
   -- Juros em % deste empréstimo; amount_to_receive = amount_lent * (1 + juros/100).
   interest_rate      DECIMAL(6,2) NOT NULL DEFAULT 0 CHECK (interest_rate >= 0),
   amount_to_receive  DECIMAL(12,2) NOT NULL CHECK (amount_to_receive > 0),
+  -- Parcelado: total dividido em N parcelas mensais (1 = de uma vez). A última quita.
+  installments       INT NOT NULL DEFAULT 1,
+  installments_paid  INT NOT NULL DEFAULT 0,
   loan_date          DATE NOT NULL DEFAULT CURRENT_DATE,
   due_date           DATE NOT NULL,
   paid_at            DATE,
   payment_method     TEXT,
-  created_at         TIMESTAMPTZ DEFAULT NOW() NOT NULL
+  created_at         TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  CONSTRAINT loans_installments_check
+    CHECK (installments BETWEEN 1 AND 120 AND installments_paid >= 0 AND installments_paid < installments)
 );
 
 CREATE INDEX idx_loans_user_due ON loans(user_id, due_date);
@@ -78,18 +83,19 @@ CREATE POLICY "people_policy" ON people FOR ALL USING (auth.uid() = user_id) WIT
 CREATE POLICY "loans_policy"  ON loans  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- =====================================================
--- PAGAMENTOS SÓ DOS JUROS (o vencimento vai para o mês seguinte)
+-- PAGAMENTOS QUE NÃO QUITAM: só juros ou uma parcela (o vencimento vai para o mês seguinte)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS loan_payments (
   id             UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id        UUID DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   loan_id        UUID REFERENCES loans(id) ON DELETE CASCADE NOT NULL,
-  kind           TEXT NOT NULL DEFAULT 'juros' CHECK (kind IN ('juros')),
+  kind           TEXT NOT NULL DEFAULT 'juros' CHECK (kind IN ('juros', 'parcela')),
   amount         DECIMAL(12,2) NOT NULL CHECK (amount > 0),
   -- Vencimento que este pagamento cobriu (o mês em que ele aparece no resumo).
   due_date       DATE NOT NULL,
   paid_at        DATE NOT NULL,
   payment_method TEXT,
+  installment_number INT,  -- número da parcela (kind = parcela)
   created_at     TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
@@ -152,3 +158,6 @@ $;
 -- Se ainda não existir, crie o usuário do sistema em
 -- Authentication -> Users -> Add user (e-mail + senha).
 -- =====================================================
+
+-- Parcelamento (fn_pay_installment e fn_undo_interest atualizada para parcelas):
+-- veja supabase/migrations/2026-11-22_parcelamento.sql

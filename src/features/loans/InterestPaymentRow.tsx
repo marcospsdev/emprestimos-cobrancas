@@ -9,25 +9,28 @@ import { PaidCheck } from './PaidCheck'
 import { STATUS_BG_CLASS } from './status'
 
 /**
- * Linha de um pagamento só dos juros (mesma cara de "pago", em verde). Aparece
- * no mês do vencimento que cobriu. Tocar no check desfaz (o vencimento volta).
+ * Linha de um pagamento que não quitou (só juros ou uma parcela), com cara de
+ * "pago", em verde. Aparece no mês do vencimento que cobriu. Tocar no check
+ * desfaz (o vencimento volta).
  */
 export function InterestPaymentRow({ payment, showPerson = true }: { payment: LoanPayment; showPerson?: boolean }) {
   const confirm = useConfirm()
   const { showToast } = useToast()
   const undo = useUndoInterest()
+  const isParcela = payment.kind === 'parcela'
+  const what = isParcela ? `parcela ${payment.installment_number} de ${payment.loan?.installments ?? '?'}` : 'juros'
 
   const handleUndo = async () => {
     const ok = await confirm({
-      title: 'Desfazer pagamento dos juros?',
-      description: `O pagamento de ${formatCurrency(payment.amount)} será apagado e o vencimento volta para ${formatDate(payment.due_date)}.`,
+      title: isParcela ? 'Desfazer pagamento da parcela?' : 'Desfazer pagamento dos juros?',
+      description: `O pagamento de ${formatCurrency(payment.amount)} (${what}) será apagado e o vencimento volta para ${formatDate(payment.due_date)}.`,
       confirmLabel: 'Desfazer',
       variant: 'danger',
     })
     if (!ok) return
     try {
       await undo.mutateAsync(payment.id)
-      showToast('Pagamento dos juros desfeito.', 'info')
+      showToast(isParcela ? 'Pagamento da parcela desfeito.' : 'Pagamento dos juros desfeito.', 'info')
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Erro ao desfazer.', 'error')
     }
@@ -40,11 +43,17 @@ export function InterestPaymentRow({ payment, showPerson = true }: { payment: Lo
         <PaidCheck paid onToggle={handleUndo} disabled={undo.isPending} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-medium text-text-secondary sm:text-sm">
-            {showPerson ? (payment.loan?.person?.name ?? '—') : `Juros de ${formatDate(payment.due_date)}`}
+            {showPerson ? (payment.loan?.person?.name ?? '—') : `${isParcela ? 'Parcela' : 'Juros'} de ${formatDate(payment.due_date)}`}
           </p>
           <p className="mt-0.5 text-lg font-semibold text-text-secondary sm:text-base">
             {formatCurrency(payment.amount)}
-            <span className="ml-1.5 text-xs font-medium text-gold-400">só juros</span>
+            {isParcela ? (
+              <span className="ml-1.5 text-xs font-medium text-text-secondary">
+                parcela {payment.installment_number}/{payment.loan?.installments ?? '?'}
+              </span>
+            ) : (
+              <span className="ml-1.5 text-xs font-medium text-gold-400">só juros</span>
+            )}
           </p>
           <p className="truncate text-sm text-text-secondary sm:text-xs sm:text-text-muted">
             {['Pago em ' + formatDate(payment.paid_at), payment.payment_method].filter(Boolean).join(' · ')}
@@ -52,8 +61,8 @@ export function InterestPaymentRow({ payment, showPerson = true }: { payment: Lo
         </div>
         <div className="flex shrink-0 flex-col items-end justify-between gap-3 self-stretch">
           <Badge variant="success" className="gap-1 px-2 py-1 text-xs">
-            <Icon icon="tabler:calendar-repeat" className="size-3.5 shrink-0" aria-hidden />
-            Juros pago
+            <Icon icon={isParcela ? 'tabler:circle-check' : 'tabler:calendar-repeat'} className="size-3.5 shrink-0" aria-hidden />
+            {isParcela ? 'Parcela paga' : 'Juros pago'}
           </Badge>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchPayments, payInterest, undoInterest, type PaymentFilters } from './payments'
+import { fetchPayments, payInstallment, payInterest, undoInterest, type PaymentFilters } from './payments'
 
 export function usePaymentsQuery(filters: PaymentFilters = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
@@ -26,4 +26,9 @@ export function usePayInterest() {
 export function useUndoInterest() {
   const invalidate = useInvalidate()
   return useMutation({ mutationFn: undoInterest, onSuccess: invalidate })
+}
+
+export function usePayInstallment() {
+  const invalidate = useInvalidate()
+  return useMutation({ mutationFn: payInstallment, onSuccess: invalidate })
 }
