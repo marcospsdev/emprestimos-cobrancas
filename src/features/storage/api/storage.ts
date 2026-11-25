@@ -17,6 +17,8 @@ const TABLES: Omit<TableUsage, 'count' | 'bytes'>[] = [
   { table: 'people', label: 'Clientes', description: 'Nome, WhatsApp e observações', icon: 'tabler:users' },
   { table: 'loans', label: 'Empréstimos', description: 'Todos os empréstimos, pagos ou não', icon: 'tabler:coins' },
   { table: 'loan_payments', label: 'Pagamentos de juros', description: 'Cada mês pago só nos juros', icon: 'tabler:calendar-repeat' },
+  { table: 'expenses', label: 'Despesas', description: 'Gastos do mês, pagos ou a pagar', icon: 'tabler:receipt' },
+  { table: 'fixed_expenses', label: 'Contas fixas', description: 'Despesas que repetem todo mês', icon: 'tabler:repeat' },
   { table: 'notification_log', label: 'Avisos enviados', description: 'Registro dos avisos de vencimento', icon: 'tabler:bell' },
   { table: 'push_devices', label: 'Aparelhos com avisos', description: 'Celulares e navegadores cadastrados', icon: 'tabler:device-mobile' },
 ]

@@ -82,3 +82,44 @@ export interface UserSettings {
 }
 
 export type UserSettingsInput = Pick<UserSettings, 'pix_key_type' | 'pix_key' | 'pix_bank' | 'pix_holder'>
+
+/** Gasto do mês (pago ou a pagar). Status derivado de `paid_at` e `due_date`, como nos empréstimos. */
+export interface Expense {
+  id: string
+  user_id: string | null
+  description: string
+  /** Chave de EXPENSE_CATEGORIES (ex.: 'mercado'). */
+  category: string
+  amount: number
+  /** Data do gasto / vencimento da conta (define o mês em que aparece). */
+  due_date: string
+  paid_at: string | null
+  notes: string | null
+  /** Veio de uma conta fixa (repete todo mês). */
+  fixed_expense_id: string | null
+  /** Primeiro dia do mês de due_date (calculado no banco). */
+  ref_month: string
+  created_at: string
+}
+
+export type ExpenseInput = Pick<Expense, 'description' | 'category' | 'amount' | 'due_date' | 'paid_at' | 'notes'> &
+  Partial<Pick<Expense, 'fixed_expense_id'>>
+
+/** Conta fixa: o app lança uma despesa dela em cada mês (fn_generate_fixed_expenses). */
+export interface FixedExpense {
+  id: string
+  user_id: string | null
+  description: string
+  category: string
+  amount: number
+  due_day: number
+  /** Primeiro mês (dia 1). */
+  start_month: string
+  /** Último mês em que repete (dia 1); null = repete sempre. */
+  end_month: string | null
+  last_generated_month: string | null
+  created_at: string
+}
+
+export type FixedExpenseInput = Pick<FixedExpense, 'description' | 'category' | 'amount' | 'due_day' | 'start_month'> &
+  Partial<Pick<FixedExpense, 'end_month' | 'last_generated_month'>>

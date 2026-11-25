@@ -24,8 +24,8 @@ export function AppLayout() {
       <div className="flex min-h-dvh flex-col bg-background lg:pl-64">
         <Sidebar />
         <MobileHeader />
-        {/* pb no celular: espaço para a barra inferior + área do gesto de home. */}
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 lg:max-w-5xl lg:px-8 lg:py-8">
+        {/* pb no celular: espaço para a barra inferior, o botão "+" flutuante e a área do gesto de home. */}
+        <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-[calc(10rem+env(safe-area-inset-bottom))] sm:px-6 lg:max-w-5xl lg:px-8 lg:py-8">
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>

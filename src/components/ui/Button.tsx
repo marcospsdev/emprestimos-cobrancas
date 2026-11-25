@@ -44,7 +44,16 @@ export interface ButtonProps
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, loading = false, disabled, children, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button'
+    // asChild (ex.: um <Link> com cara de botão): o Slot exige um único filho,
+    // então aqui não entra o ícone de carregando.
+    if (asChild) {
+      return (
+        <Slot ref={ref} className={cn(buttonVariants({ variant, size, className }))} {...props}>
+          {children}
+        </Slot>
+      )
+    }
+    const Comp = 'button'
     return (
       <Comp
         ref={ref}

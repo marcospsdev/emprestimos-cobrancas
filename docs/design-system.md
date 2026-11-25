@@ -77,6 +77,6 @@ As cores ficam só em `status.ts` (`STATUS_BADGE_VARIANT`, `STATUS_BG_CLASS`, `S
 
 ## Navegação
 
-- **Celular:** `BottomNav` fixa embaixo (Resumo · Empréstimos · **+ Novo** · Pessoas) e `MobileHeader` com o menu da conta. O botão "Novo empréstimo" escrito também aparece no topo do Resumo e da lista, porque ícone sozinho não basta para quem não é da área.
+- **Celular:** `BottomNav` fixa embaixo (Resumo · Empréstimos · Clientes · Despesas · Conta) e um botão flutuante com texto acima dela, à direita: "Novo empréstimo" ("Novo cliente" na lista de Clientes, "Nova despesa" em Despesas). Por isso os botões de cadastrar do topo das telas só aparecem no desktop. Conta abre uma folha com avisos, Pix, Armazenamento, senha e sair.
 - **Desktop (`lg:`)**: `Sidebar` fixa com o botão "Novo empréstimo".
 - O mês selecionado fica na URL (`?mes=2026-09`) e acompanha a troca entre Resumo e Empréstimos.

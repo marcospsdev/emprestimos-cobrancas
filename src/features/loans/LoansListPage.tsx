@@ -167,8 +167,8 @@ export function LoansListPage() {
               columns={EXPORT_COLUMNS}
               rows={exportRows}
             />
-            {/* Exportar à esquerda, "Novo empréstimo" à direita ocupando o resto (no celular). */}
-            <Button onClick={() => openNewLoan()} className="flex-1 sm:flex-none">
+            {/* No celular quem cadastra é o botão flutuante "Novo empréstimo" (barra de baixo). */}
+            <Button onClick={() => openNewLoan()} className="hidden flex-1 sm:flex-none lg:inline-flex">
               <Icon icon="tabler:plus" className="size-5 sm:size-4.5" />
               Novo empréstimo
             </Button>

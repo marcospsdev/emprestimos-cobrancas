@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { Icon } from '@iconify/react'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -20,6 +20,9 @@ export function PeopleListPage() {
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Person | null>(null)
+  // ?novo=1 vem do botão flutuante da barra de baixo: abre o cadastro.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const newFromNav = searchParams.get('novo') === '1'
   const { data: people, isLoading } = usePeopleQuery()
   const { data: loans } = useLoansQuery()
   const deletePerson = useDeletePerson()
@@ -85,9 +88,9 @@ export function PeopleListPage() {
       <PageHeader
         title="Clientes"
         actions={
-          // Ação principal da tela: primary, com texto também no celular (como "Novo empréstimo").
-          <Button onClick={openNew} className="w-full sm:w-auto">
-            <Icon icon="tabler:user-plus" className="size-5 sm:size-4.5" />
+          // No celular quem cadastra é o botão flutuante "Novo cliente" (barra de baixo).
+          <Button onClick={openNew} className="hidden lg:inline-flex">
+            <Icon icon="tabler:user-plus" className="size-4.5" />
             Novo cliente
           </Button>
         }
@@ -162,7 +165,14 @@ export function PeopleListPage() {
         </ul>
       )}
 
-      <PersonFormModal open={modalOpen} onOpenChange={setModalOpen} person={editing} />
+      <PersonFormModal
+        open={modalOpen || newFromNav}
+        onOpenChange={(open) => {
+          setModalOpen(open)
+          if (!open && newFromNav) setSearchParams({}, { replace: true })
+        }}
+        person={newFromNav ? null : editing}
+      />
     </div>
   )
 }

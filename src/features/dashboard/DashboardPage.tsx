@@ -18,6 +18,8 @@ import { usePaymentsQuery } from '@/features/loans/api/usePayments'
 import { LoanList } from '@/features/loans/LoanList'
 import { useLoanForm } from '@/features/loans/loanFormContext'
 import { getLoanStatus, sortLoans, summarizeLoans } from '@/features/loans/status'
+import { useExpensesQuery } from '@/features/expenses/api/useExpenses'
+import { summarizeExpenses } from '@/features/expenses/status'
 
 const CHART_MONTHS = 6
 const PREVIEW_LIMIT = 5
@@ -45,6 +47,9 @@ export function DashboardPage() {
     [periodPayments, range.from, range.to],
   )
   const totals = useMemo(() => summarizeLoans(monthLoans, today, monthPayments), [monthLoans, today, monthPayments])
+  // Despesas do mês: quanto saiu e quanto sobra do lucro dos empréstimos.
+  const { data: monthExpenses, isLoading: loadingExpenses } = useExpensesQuery(range)
+  const expenseTotals = useMemo(() => summarizeExpenses(monthExpenses ?? [], today), [monthExpenses, today])
   const overdueTotals = useMemo(() => summarizeLoans(overdueLoans ?? [], today), [overdueLoans, today])
 
   const toReceive = useMemo(
@@ -71,7 +76,8 @@ export function DashboardPage() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-text-primary sm:text-2xl">Resumo</h1>
-        <Button onClick={() => openNewLoan()}>
+        {/* No celular o botão flutuante "Novo empréstimo" já faz isso. */}
+        <Button onClick={() => openNewLoan()} className="hidden lg:inline-flex">
           <Icon icon="tabler:plus" className="size-4.5" />
           Novo empréstimo
         </Button>
@@ -134,6 +140,45 @@ export function DashboardPage() {
           loading={isLoading}
         />
       </div>
+
+      <Link
+        to={`/despesas${monthQueryString(month)}`}
+        className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors hover:bg-surface-hover/60 active:bg-surface-hover"
+      >
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-elevated text-text-secondary">
+          <Icon icon="tabler:receipt" className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-text-secondary">Despesas em {formatMonthLabel(month).split(' ')[0].toLowerCase()}</p>
+          {loadingExpenses || isLoading ? (
+            <Skeleton className="mt-1 h-6 w-28" />
+          ) : (
+            <>
+              <p className="text-lg font-semibold text-text-primary">{formatCurrency(expenseTotals.total)}</p>
+              <p className="truncate text-sm text-text-muted">
+                {expenseTotals.overdueCount > 0 ? (
+                  <span className="font-medium text-danger">
+                    {expenseTotals.overdueCount} {expenseTotals.overdueCount === 1 ? 'atrasada' : 'atrasadas'}
+                  </span>
+                ) : expenseTotals.pending > 0 ? (
+                  <span className="text-info">falta pagar {formatCurrency(expenseTotals.pending)}</span>
+                ) : expenseTotals.count > 0 ? (
+                  'tudo pago'
+                ) : (
+                  'nada lançado'
+                )}
+                {' · '}
+                {totals.profit - expenseTotals.total >= 0 ? 'sobra ' : 'falta '}
+                <span className={totals.profit - expenseTotals.total >= 0 ? 'font-medium text-success' : 'font-medium text-danger'}>
+                  {formatCurrency(Math.abs(totals.profit - expenseTotals.total))}
+                </span>{' '}
+                do lucro
+              </p>
+            </>
+          )}
+        </div>
+        <Icon icon="tabler:chevron-right" className="size-5 shrink-0 text-text-muted" />
+      </Link>
 
       {overdueSorted.length > 0 && (
         <Section

@@ -10,6 +10,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Resumo', to: '/', icon: 'tabler:layout-dashboard', keepsMonth: true },
   { label: 'Empréstimos', to: '/emprestimos', icon: 'tabler:coins', keepsMonth: true },
   { label: 'Clientes', to: '/clientes', icon: 'tabler:users' },
-  // Só no menu lateral (desktop). No celular fica dentro de "Conta".
+  // Daqui para baixo: só no menu lateral (desktop). No celular ficam no Resumo e dentro de "Conta".
+  { label: 'Despesas', to: '/despesas', icon: 'tabler:receipt', keepsMonth: true },
   { label: 'Armazenamento', to: '/armazenamento', icon: 'tabler:database' },
 ]

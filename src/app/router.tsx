@@ -11,6 +11,10 @@ const PeopleListPage = lazy(() => import('@/features/people/PeopleListPage').the
 const PersonDetailPage = lazy(() =>
   import('@/features/people/PersonDetailPage').then((m) => ({ default: m.PersonDetailPage })),
 )
+const ExpensesPage = lazy(() => import('@/features/expenses/ExpensesPage').then((m) => ({ default: m.ExpensesPage })))
+const ExpenseReportPage = lazy(() =>
+  import('@/features/expenses/ExpenseReportPage').then((m) => ({ default: m.ExpenseReportPage })),
+)
 const StoragePage = lazy(() => import('@/features/storage/StoragePage').then((m) => ({ default: m.StoragePage })))
 
 function LegacyPersonRedirect() {
@@ -34,6 +38,8 @@ export const router = createBrowserRouter([
           { path: 'emprestimos', element: <LoansListPage /> },
           { path: 'clientes', element: <PeopleListPage /> },
           { path: 'clientes/:id', element: <PersonDetailPage /> },
+          { path: 'despesas', element: <ExpensesPage /> },
+          { path: 'despesas/relatorio', element: <ExpenseReportPage /> },
           { path: 'armazenamento', element: <StoragePage /> },
           // Links antigos (/pessoas) continuam funcionando.
           { path: 'pessoas', element: <Navigate to="/clientes" replace /> },
